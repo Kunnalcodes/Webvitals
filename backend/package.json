@@ -1,0 +1,12 @@
+{
+  "name": "webvitals-backend",
+  "version": "4.0.0",
+  "description": "WebVitals Web Security & SEO Intelligence Engine",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test tests/"
+  },
+  "license": "ISC"
+}

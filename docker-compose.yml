@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  webvitals:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webvitals-app
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      - PORT=8888
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8888/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - webvitals-network
+
+networks:
+  webvitals-network:
+    driver: bridge

@@ -1,0 +1,21 @@
+# Chapter 2: Problem Definition
+
+The rapid expansion of web-based services has made web applications a primary target for increasingly sophisticated and automated malicious exploits. As organizations migrate towards complex, distributed cloud architectures, single-page applications, and API-centric microservices, the attack surface has grown exponentially. Development and security teams are consequently facing several critical challenges that conventional security tooling fails to address adequately.
+
+## 2.1 The Crisis of False Positives and Alert Fatigue
+One of the most persistent issues with conventional Dynamic Application Security Testing (DAST) tools is their tendency to flag non-existent vulnerabilities. Traditional scanners often rely on rudimentary pattern matching, triggering alarms when a specific word or format is detected, without verifying if an actual exploit path exists. This leads to a high volume of false positives. As a result, security operations centers (SOCs) and development teams suffer from severe alert fatigue, wasting hundreds of developer hours manually investigating "ghost" issues. This friction not only slows down the development lifecycle but also creates a "cry wolf" scenario where genuine, critical vulnerabilities are overlooked in a sea of noise.
+
+## 2.2 Fragmented and Siloed Intelligence Tooling
+Currently, the assessment of a web application's overall health is highly fragmented. Security auditing, technical SEO analysis, and web performance tracking (such as Google Core Web Vitals) are typically treated as entirely separate disciplines, siloed across multiple disconnected platforms. This fragmentation makes it incredibly difficult for stakeholders to gain a holistic view of web health. For example, a website might be mathematically secure but penalized by search engines for poor load times, or highly performant but leaking sensitive `.git` repository data. A unified approach is necessary to ensure applications are fast, visible, and secure simultaneously.
+
+## 2.3 Complex Dependencies and Supply Chain Risks
+Modern security scanners often rely on massive, convoluted dependency trees (e.g., pulling in hundreds of npm packages). This creates a paradox where the tools designed to secure applications actually increase the attack surface. Supply chain attacks—where a malicious actor compromises a third-party dependency—are on the rise. Furthermore, these heavy dependencies result in bloated memory footprints, slow execution speeds, and difficulty integrating the scanner seamlessly into lightweight CI/CD pipelines.
+
+## 2.4 Lack of Actionable, Context-Aware Remediation
+Even when vulnerabilities are accurately identified by traditional scanners, the remediation advice provided is often generic and abstract (e.g., "Implement a strict Content Security Policy"). This lack of context leaves developers guessing how to apply the fix within their specific technological stack (e.g., Next.js vs. Apache vs. Nginx). Bridging the gap between identifying a flaw and providing stack-specific, copy-pasteable remediation code remains a significant hurdle in modern DevSecOps.
+
+## 2.5 Slow Response to Rapidly Emerging Threats
+The threat landscape evolves hourly, yet traditional security scanners rely heavily on static signature databases that are updated periodically. This methodology is inherently reactive and often becomes outdated within days. Consequently, static scanners consistently fail to detect rapidly emerging zero-day phishing campaigns, ephemeral malware hosting sites, or the latest CVEs without real-time threat intelligence. 
+
+## 2.6 The Proposed Solution
+**WebVitals** (Project WebVitals) aims to solve these entrenched industry problems by providing a unified, lightning-fast, zero-dependency intelligence engine. By correlating live threat intelligence feeds (such as Google Safe Browsing and VirusTotal) and utilizing a deterministic evidence model, the platform guarantees a near-zero false positive rate. Furthermore, by integrating Large Language Models (LLMs) like Google Gemini, WebVitals translates complex vulnerability data into highly specific, actionable remediation playbooks tailored directly to the target application's unique technological stack.

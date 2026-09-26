@@ -1,0 +1,28 @@
+{
+  "name": "webvitals-web-security-intelligence",
+  "version": "4.0.0",
+  "description": "WebVitals — Enterprise Web Security Auditing, Technical SEO & Threat Intelligence Platform",
+  "private": true,
+  "main": "backend/index.js",
+  "scripts": {
+    "dev": "node scripts/start-dev.js",
+    "dev:backend": "node backend/index.js",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "node backend/index.js",
+    "test": "node --test backend/tests/",
+    "test:backend": "cd backend && npm test"
+  },
+  "keywords": [
+    "security-scanner",
+    "web-vitals",
+    "seo-audit",
+    "lighthouse",
+    "appsec",
+    "threat-intelligence",
+    "dast",
+    "zero-dependency"
+  ],
+  "author": "Kunal Sharma",
+  "license": "MIT"
+}
