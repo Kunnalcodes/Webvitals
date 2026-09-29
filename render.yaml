@@ -2,7 +2,7 @@ services:
   - type: web
     name: webvitals-security-platform
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm run build
     startCommand: npm start
     envVars:
@@ -12,5 +12,14 @@ services:
         value: "10000"
       - key: AI_ENABLED
         value: "true"
-      - key: GOOGLE_CLOUD_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: VIRUSTOTAL_API_KEY
+        sync: false
+      - key: MAX_CONCURRENT_SCANS_PER_IP
+        value: "3"
+      - key: MAX_TOTAL_CONCURRENT_SCANS
+        value: "25"
+
