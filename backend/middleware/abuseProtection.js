@@ -220,22 +220,35 @@ async function validateRedirectDestination(urlObj) {
   return { valid: true };
 }
 
+const UI_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: https: blob:",
+  "connect-src 'self' https: wss: ws:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+const API_CSP = "default-src 'none'; frame-ancestors 'none';";
+
 /**
  * Applies defense-in-depth security headers to all outgoing responses.
+ * Uses a permissive CSP for UI/static assets and a strict one for JSON APIs.
+ *
+ * @param {import('http').ServerResponse} res
+ * @param {boolean} [isApi=false]
  */
-function applySecurityHeaders(res) {
+function applySecurityHeaders(res, isApi = false) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-  // Tight CSP for the API — no scripts, no frames, no inline content
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'none'; frame-ancestors 'none';"
-  );
-  // Strict HSTS for API responses
+  res.setHeader('Content-Security-Policy', isApi ? API_CSP : UI_CSP);
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 }
 

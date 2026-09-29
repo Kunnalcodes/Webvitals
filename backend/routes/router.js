@@ -83,15 +83,16 @@ function serveStatic(req, res) {
 // ─── Main request handler ─────────────────────────────────────────────────────
 
 async function handleRequest(req, res) {
-  // 1. Security headers on every response
-  applySecurityHeaders(res);
-
-  // 2. CORS (returns false if it handled an OPTIONS preflight)
-  if (!applyCors(req, res)) return;
-
   const parsed   = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsed.pathname;
   const method   = req.method.toUpperCase();
+  const isApi    = pathname.startsWith('/api/');
+
+  // 1. Security headers on every response (strict CSP for API, rich CSP for SPA)
+  applySecurityHeaders(res, isApi);
+
+  // 2. CORS (returns false if it handled an OPTIONS preflight)
+  if (!applyCors(req, res)) return;
 
   // ── Health ──────────────────────────────────────────────────────────────────
   if (pathname === '/api/health' && method === 'GET') {
