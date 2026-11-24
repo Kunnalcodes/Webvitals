@@ -35,6 +35,10 @@ export default function Navbar({ onScrollToScanner, onOpenExtension }) {
           <a href="#seo-audit" className="hover:underline decoration-2 underline-offset-4">
             SEO Audit
           </a>
+          <a href="#competitive-intelligence" className="hover:underline decoration-2 underline-offset-4 flex items-center gap-1 text-purple-900 font-bold">
+            <span className="bg-[#fde047] text-black text-[10px] font-bold px-1.5 py-0.2 rounded border border-black">AI</span>
+            Competitor Intel
+          </a>
           <a href="#features" className="hover:underline decoration-2 underline-offset-4">12 Channels</a>
         </div>
 
@@ -95,6 +99,14 @@ export default function Navbar({ onScrollToScanner, onOpenExtension }) {
           >
             <span>✨ Complete SEO & Lighthouse Audit</span>
             <span className="bg-[#86efac] text-black text-[10px] font-bold px-1.5 py-0.5 rounded border border-black">FREE</span>
+          </a>
+          <a
+            href="#competitive-intelligence"
+            onClick={() => setMobileMenuOpen(false)}
+            className="text-base font-bold font-space hover:underline text-purple-900 flex items-center gap-2"
+          >
+            <span>🎯 AI Competitor Intelligence</span>
+            <span className="bg-[#fde047] text-black text-[10px] font-bold px-1.5 py-0.5 rounded border border-black">NEW</span>
           </a>
           <a
             href="#features"

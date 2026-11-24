@@ -14,6 +14,12 @@ const { handleBenchmark }   = require('../controllers/benchmarkController');
 const { handleTechStack }   = require('../controllers/techStackController');
 const { handleDomainRecon } = require('../controllers/domainReconController');
 const { handleSeoAnalyze, handleSeoHistory } = require('../controllers/seoController');
+const {
+  handleCompetitiveAnalyze,
+  handleCompetitiveStatus,
+  handleCompetitiveHistory,
+  handleCompetitiveExport,
+} = require('../controllers/competitiveController');
 const { handleExplain, handleRemediate, handleChat, handleExecutiveSummary } = require('../controllers/aiController');
 const { handleSarifExport, handleMarkdownExport, handleQualityGate } = require('../controllers/exportController');
 const { checkRateLimit }    = require('../middleware/rateLimiter');
@@ -200,6 +206,24 @@ async function handleRequest(req, res) {
 
   if (pathname === '/api/seo/history' && method === 'GET') {
     return handleSeoHistory(req, res);
+  }
+
+  // ── Competitive Intelligence ────────────────────────────────────────────────
+  if (pathname === '/api/competitive/analyze' && (method === 'GET' || method === 'POST')) {
+    if (!checkRateLimit(req, res, 'competitive')) return;
+    return handleCompetitiveAnalyze(req, res, parsed);
+  }
+
+  if (pathname === '/api/competitive/status' && method === 'GET') {
+    return handleCompetitiveStatus(req, res, parsed);
+  }
+
+  if (pathname === '/api/competitive/history' && method === 'GET') {
+    return handleCompetitiveHistory(req, res);
+  }
+
+  if (pathname === '/api/competitive/export' && method === 'GET') {
+    return handleCompetitiveExport(req, res, parsed);
   }
 
   // ── Phase 4: AI Intelligence & Remediation ─────────────────────────────────

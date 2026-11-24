@@ -5,6 +5,7 @@ import TechStackSection from './components/TechStackSection';
 import WebCheckWhatWebSection from './components/WebCheckWhatWebSection';
 import OutputFeedSection from './components/OutputFeedSection';
 import SeoAuditSection from './components/seo/SeoAuditSection';
+import CompetitiveSection from './components/competitive/CompetitiveSection';
 import Features from './components/Features';
 import Portfolio from './components/Portfolio';
 import Integrations from './components/Integrations';
@@ -131,6 +132,9 @@ export default function App() {
         seoState={seoScanner}
         onScan={handleScanUrl}
       />
+
+      {/* AI Competitor Intelligence, SEO/GEO/AEO Comparison & Keyword Opportunity Engine */}
+      <CompetitiveSection />
 
       <Features />
 

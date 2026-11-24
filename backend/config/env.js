@@ -43,8 +43,9 @@ const PUBLIC_DIR = fs.existsSync(DIST_DIR) ? DIST_DIR : path.join(ROOT_DIR, 'pub
 // ─── Rate limits (per IP, per 60-second window) ───────────────────────────────
 const RATE_LIMITS = {
   scan:      { maxRequests: 5,   windowMs: 60_000 },  // expensive — strict
-  seo:       { maxRequests: 10,  windowMs: 60_000 },
-  techstack: { maxRequests: 10,  windowMs: 60_000 },
+  seo:         { maxRequests: 10,  windowMs: 60_000 },
+  competitive: { maxRequests: 5,   windowMs: 60_000 },
+  techstack:   { maxRequests: 10,  windowMs: 60_000 },
   benchmark: { maxRequests: 5,   windowMs: 60_000 },
   ai:        { maxRequests: 25,  windowMs: 60_000 },  // Phase 4 AI requests
   general:   { maxRequests: 60,  windowMs: 60_000 },  // health, status, history, exports
