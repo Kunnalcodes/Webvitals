@@ -49,6 +49,9 @@ async function handleScan(req, res) {
 
   let rawUrl = '';
   let isSync = false;
+  let mode = 'passive';
+  let hasConsent = false;
+  let depth = 'standard';
 
   // Try JSON body first if present
   if (body && body.trim()) {
@@ -56,6 +59,9 @@ async function handleScan(req, res) {
       const parsed = JSON.parse(body);
       rawUrl = parsed.url || parsed.target || '';
       isSync = !!parsed.sync;
+      mode = parsed.mode || 'passive';
+      hasConsent = !!(parsed.hasConsent || parsed.consent);
+      depth = parsed.depth || 'standard';
     } catch {
       // ignore
     }
@@ -68,6 +74,12 @@ async function handleScan(req, res) {
       rawUrl = parsedUrl.searchParams.get('url') || parsedUrl.searchParams.get('target') || '';
       if (!isSync) {
         isSync = parsedUrl.searchParams.get('sync') === 'true';
+      }
+      if (parsedUrl.searchParams.get('mode')) {
+        mode = parsedUrl.searchParams.get('mode');
+      }
+      if (parsedUrl.searchParams.get('consent') === 'true') {
+        hasConsent = true;
       }
     } catch {
       // ignore
@@ -82,8 +94,10 @@ async function handleScan(req, res) {
     return sendError(res, 400, 'INVALID_TARGET', validation.message);
   }
 
+  const scanOptions = { mode, hasConsent, depth };
+
   try {
-    const jobResult = enqueue(rawUrl);
+    const jobResult = enqueue(rawUrl, scanOptions);
 
     // Release HTTP concurrency slot right away
     releaseScanSlot(req);
@@ -91,7 +105,7 @@ async function handleScan(req, res) {
     if (isSync) {
       // Synchronous execution mode: wait for scan to complete and return full report
       try {
-        await executeScan(jobResult.scanId, rawUrl);
+        await executeScan(jobResult.scanId, rawUrl, scanOptions);
         const report = scanRepository.getScan(jobResult.scanId);
         if (report) {
           return sendSuccess(res, report, { statusCode: 200 });

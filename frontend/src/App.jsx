@@ -64,7 +64,7 @@ export default function App() {
       .catch(() => {});
 
     if (includeSecurity) {
-      scanner.scan(url);
+      scanner.scan(url, options);
     } else {
       scanner.reset();
     }

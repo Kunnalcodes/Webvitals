@@ -34,9 +34,21 @@ const { analyzeHttpVerbs }             = require('../analyzers/httpVerbAnalyzer'
 const { analyzeProxyHeaders }          = require('../analyzers/proxyHeaderAnalyzer');
 const { detectTechnologies }           = require('../signatures/technologySignatures');
 const { correlateThreatAdvisories }     = require('../services/threatAdvisoryService');
-const { generateCurlCommands, runWhatWebFingerprint } = require('../services/domainReconService');
+const { generateCurlCommands, runWhatWebFingerprint, performDomainRecon } = require('../services/domainReconService');
 const { queryIpGeolocation }           = require('../services/threatIntelService');
 const { SAFE_BROWSING_API_KEY, VIRUSTOTAL_API_KEY } = require('../config/env');
+
+// Modular Workers & Precision Finding Engine
+const { runDnsWorker }         = require('../workers/dnsWorker');
+const { runTlsWorker }         = require('../workers/tlsWorker');
+const { runHttpWorker }        = require('../workers/httpWorker');
+const { runSecurityWorker }    = require('../workers/securityWorker');
+const { runDomainWorker }      = require('../workers/domainWorker');
+const { runNetworkWorker }     = require('../workers/networkWorker');
+const { runContentWorker }     = require('../workers/contentWorker');
+const { runPerformanceWorker } = require('../workers/performanceWorker');
+const { runEmailWorker }       = require('../workers/emailWorker');
+const { evaluateScanResults }  = require('../services/precisionEngine');
 
 // Scoring & Storage
 const { computeScore, gradeFor, classify } = require('../services/securityEvaluator');
@@ -67,9 +79,10 @@ function makeLogger(scanId) {
  *
  * @param {string} scanId - Must exist in lifecycle store
  * @param {string} rawUrl - Target URL
+ * @param {Object} [options={}] - Scan mode ('passive'|'active'), depth, consent
  * @returns {Promise<void>}
  */
-async function executeScan(scanId, rawUrl) {
+async function executeScan(scanId, rawUrl, options = {}) {
   const log = makeLogger(scanId);
   const ctx = { scanId, log };
 
@@ -246,7 +259,71 @@ async function executeScan(scanId, rawUrl) {
     const accessControlData = accessControlSettled.value?.value    ?? { findings: [], telemetry: {} };
     const accessControlFindings = accessControlData.findings || [];
 
-    // ── 7. AGGREGATE ALL FINDINGS ──────────────────────────────────────────────
+    // ── 7. MODULAR WORKERS & DEEP OSINT RECONNAISSANCE ────────────────────────
+    let modularChecks = [];
+    let reconData = null;
+    let precisionEvaluation = null;
+
+    await runStage(ctx, 'OSINT_MODULAR_AUDIT', async () => {
+      const [
+        dnsWorkerSettled,
+        emailWorkerSettled,
+        tlsWorkerSettled,
+        httpWorkerSettled,
+        securityWorkerSettled,
+        domainWorkerSettled,
+        networkWorkerSettled,
+        contentWorkerSettled,
+        performanceWorkerSettled,
+        reconSettled,
+      ] = await Promise.allSettled([
+        runDnsWorker(finalHost, options),
+        runEmailWorker(finalHost, dnsData?.txt || [], dnsData?.mx || []),
+        isHttps ? runTlsWorker(finalHost) : Promise.resolve({ checks: [], tlsData: null }),
+        runHttpWorker(finalUrlObj, { maxRedirects: 5, timeoutMs: 10000 }),
+        runSecurityWorker(finalUrlObj, rawHeaders),
+        runDomainWorker(finalHost),
+        runNetworkWorker(finalHost, dnsData?.a || [], options),
+        runContentWorker(finalUrlObj, rawHeaders, httpTelemetry.bodySnippet || ''),
+        runPerformanceWorker(httpTelemetry),
+        performDomainRecon(finalHost).catch(() => null),
+      ]);
+
+      const dnsWorkerRes = dnsWorkerSettled.value || { checks: [], raw: {} };
+      const emailWorkerRes = emailWorkerSettled.value || { checks: [], emailConfig: {} };
+      const tlsWorkerRes = tlsWorkerSettled.value || { checks: [], tlsData: null };
+      const httpWorkerRes = httpWorkerSettled.value || { checks: [], telemetry: {} };
+      const securityWorkerRes = securityWorkerSettled.value || { checks: [], securityData: {} };
+      const domainWorkerRes = domainWorkerSettled.value || { checks: [], domainData: {} };
+      const networkWorkerRes = networkWorkerSettled.value || { checks: [], networkData: {} };
+      const contentWorkerRes = contentWorkerSettled.value || { checks: [], contentData: {} };
+      const performanceWorkerRes = performanceWorkerSettled.value || { checks: [], performanceData: {} };
+      reconData = reconSettled.value || null;
+
+      modularChecks = [
+        ...(dnsWorkerRes.checks || []),
+        ...(emailWorkerRes.checks || []),
+        ...(tlsWorkerRes.checks || []),
+        ...(httpWorkerRes.checks || []),
+        ...(securityWorkerRes.checks || []),
+        ...(domainWorkerRes.checks || []),
+        ...(networkWorkerRes.checks || []),
+        ...(contentWorkerRes.checks || []),
+        ...(performanceWorkerRes.checks || []),
+      ];
+
+      precisionEvaluation = evaluateScanResults(modularChecks);
+
+      // Return telemetry summaries for stage report
+      return {
+        checksCount: modularChecks.length,
+        passed: precisionEvaluation.coverage.passed,
+        findings: precisionEvaluation.coverage.findings,
+        score: precisionEvaluation.score,
+      };
+    }, { fatal: false });
+
+    // ── 8. AGGREGATE ALL FINDINGS ──────────────────────────────────────────────
     const allFindings = [
       ...tlsFindings,
       ...headerFindings,
@@ -258,7 +335,7 @@ async function executeScan(scanId, rawUrl) {
       ...phishingData,
     ];
 
-    // ── 8. STAGE: SCORING (Deterministic 0-100 evaluation) ─────────────────────
+    // ── 9. STAGE: SCORING (Deterministic 0-100 evaluation) ─────────────────────
     let score = 100;
     let grade = 'A';
     let gradeLabel = 'Good security posture';
@@ -283,7 +360,7 @@ async function executeScan(scanId, rawUrl) {
       return score;
     }, { fatal: false });
 
-    // ── 9. STAGE: FINALIZING (Assemble & Persist Report) ───────────────────────
+    // ── 10. STAGE: FINALIZING (Assemble & Persist Report) ───────────────────────
     await runStage(ctx, 'FINALIZING', async () => {
       const completedAt = new Date().toISOString();
       const lc = getLifecycle(scanId);
@@ -308,6 +385,31 @@ async function executeScan(scanId, rawUrl) {
         gradeLabel,
         classification,
         findings: allFindings,
+        // Modular standard schema checks & precision analysis
+        modularChecks: modularChecks || [],
+        precision: precisionEvaluation || null,
+        remediation: precisionEvaluation?.remediation || [],
+        methodology: precisionEvaluation?.methodology || null,
+        coverage: precisionEvaluation?.coverage || null,
+        categoryScores: precisionEvaluation?.categoryScores || null,
+        overview: {
+          scanId,
+          target: rawUrl,
+          finalUrl: finalUrlStr,
+          hostname: finalHost,
+          ip: dnsData?.a?.[0] || '127.0.0.1',
+          asn: reconData?.osint?.output?.serverLocation?.asn || 'Autonomous System',
+          country: reconData?.osint?.output?.serverLocation?.location || 'Global',
+          mode: options.mode || 'passive',
+          score: precisionEvaluation ? precisionEvaluation.score : score,
+          grade: precisionEvaluation ? precisionEvaluation.grade : grade,
+          risk: precisionEvaluation ? precisionEvaluation.risk : classification,
+          startedAt,
+          completedAt,
+          durationMs: Date.now() - new Date(startedAt).getTime(),
+          coverage: precisionEvaluation?.coverage || null,
+          categoryScores: precisionEvaluation?.categoryScores || null,
+        },
         channels: allFindings.map((f) => ({
           id: f.id || f.channel,
           name: f.title || f.name || f.channel || f.id,
@@ -348,7 +450,7 @@ async function executeScan(scanId, rawUrl) {
           proxyResilient: accessControlData?.telemetry?.proxyHeaders?.resilient ?? true,
           proxyProbes: accessControlData?.telemetry?.proxyHeaders?.probes || [],
         },
-        domainRecon: {
+        domainRecon: reconData || {
           engine: 'WebVitals Deep OSINT Recon Engine',
           whatweb: await runWhatWebFingerprint(urlObj, httpTelemetry.headers, ''),
           curlCommands: generateCurlCommands(rawUrl, hostname),

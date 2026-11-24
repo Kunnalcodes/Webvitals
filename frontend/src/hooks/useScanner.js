@@ -62,7 +62,7 @@ export function useScanner() {
     });
   }, []);
 
-  const scan = useCallback(async (url) => {
+  const scan = useCallback(async (url, options = {}) => {
     if (!url || !url.trim()) return;
     cleanupStreams();
 
@@ -73,7 +73,7 @@ export function useScanner() {
     setProgress(10);
     setCurrentStage('VALIDATING');
     setStageLogs([
-      { stage: 'INIT', message: `Initializing perimeter security probing on ${url.trim()}...`, timestamp: new Date().toLocaleTimeString(), status: 'done' },
+      { stage: 'INIT', message: `Initializing perimeter security probing on ${url.trim()} [${options.mode || 'passive'} mode]...`, timestamp: new Date().toLocaleTimeString(), status: 'done' },
       { stage: 'VALIDATING', message: 'Validating hostname & anti-SSRF protections...', timestamp: new Date().toLocaleTimeString(), status: 'running' },
     ]);
 
@@ -84,7 +84,13 @@ export function useScanner() {
       const res = await fetch(`${API_BASE}/api/scan?url=${encodeURIComponent(cleanUrl)}&sync=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: cleanUrl, sync: true }),
+        body: JSON.stringify({
+          url: cleanUrl,
+          sync: true,
+          mode: options.mode || 'passive',
+          hasConsent: Boolean(options.hasConsent),
+          depth: options.depth || 'standard',
+        }),
       });
 
       // Extract Rate Limit Headers

@@ -49,11 +49,11 @@ function _drain() {
  * Start executing a scan job.
  */
 function _startJob(job) {
-  const { scanId, url } = job;
+  const { scanId, url, options = {} } = job;
   _active.add(scanId);
   console.log(`[ScanQueue] STARTED scanId=${scanId.slice(0, 8)} active=${_active.size} pending=${_pending.length}`);
 
-  executeScan(scanId, url)
+  executeScan(scanId, url, options)
     .catch((err) => {
       // executeScan handles its own failure reporting, but catch here to prevent
       // unhandled promise rejection crashing the process.
@@ -73,10 +73,11 @@ function _startJob(job) {
  * Enqueue a new scan.
  *
  * @param {string} url  - Target URL (already validated by the controller)
+ * @param {Object} [options={}] - Scan options (mode, hasConsent, depth)
  * @returns {{ scanId: string, status: 'QUEUED', queuePosition: number|null }}
  *          or throws with code 'SCAN_QUEUE_FULL'
  */
-function enqueue(url) {
+function enqueue(url, options = {}) {
   if (_pending.length >= MAX_QUEUE_SIZE) {
     const err = new Error('The scan queue is currently full. Please try again later.');
     err.code  = 'SCAN_QUEUE_FULL';
@@ -88,7 +89,7 @@ function enqueue(url) {
   const lc = createScanLifecycle(url);
   const { scanId } = lc;
 
-  const job = { scanId, url, createdAt: Date.now() };
+  const job = { scanId, url, options, createdAt: Date.now() };
 
   if (_active.size < MAX_CONCURRENCY) {
     // Start immediately (no queueing needed)

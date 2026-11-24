@@ -19,6 +19,7 @@ const { handleSarifExport, handleMarkdownExport, handleQualityGate } = require('
 const { checkRateLimit }    = require('../middleware/rateLimiter');
 const { sendError, sendSuccess } = require('../utils/helpers');
 const { getRateLimitStatus } = require('../middleware/rateLimiter');
+const { subscribe } = require('../scan/progressEmitter');
 const fs   = require('fs');
 const path = require('path');
 const { PUBLIC_DIR } = require('../config/env');
@@ -127,6 +128,41 @@ async function handleRequest(req, res) {
 
   if (pathname === '/api/scan/status' && method === 'GET') {
     return handleScanStatus(req, res);
+  }
+
+  // ── Scan SSE Stream (Server-Sent Events) ────────────────────────────────────
+  if (pathname === '/api/scan/stream' && method === 'GET') {
+    const scanId = parsed.searchParams.get('scanId');
+    if (!scanId) {
+      return sendError(res, 400, 'MISSING_SCAN_ID', 'Missing scanId parameter for SSE stream.');
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.write(': keepalive\n\n');
+
+    const unsubscribe = subscribe(scanId, (event) => {
+      try {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+        if (event.status === 'COMPLETE' || event.status === 'FAILED') {
+          setTimeout(() => {
+            unsubscribe();
+            res.end();
+          }, 1000);
+        }
+      } catch {
+        unsubscribe();
+      }
+    });
+
+    req.on('close', () => {
+      unsubscribe();
+    });
+    return;
   }
 
   // ── History ─────────────────────────────────────────────────────────────────

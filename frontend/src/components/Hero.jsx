@@ -47,11 +47,16 @@ import { ExportMenu } from './exports/ExportMenu';
 import { CiGateStatus } from './exports/CiGateStatus';
 import CircuitProgressDashboard from './CircuitProgressDashboard';
 import WebCheckDashboardGrid from './WebCheckDashboardGrid';
+import RawEvidenceInspector from './RawEvidenceInspector';
 import { generateSecurityPdf } from '../utils/pdfExportService';
-import { MessageSquare, Bot } from 'lucide-react';
+import { MessageSquare, Bot, FileJson, Check, Eye, Terminal } from 'lucide-react';
 
 export default function Hero({ scannerState, techStackState, seoState, onScan, onRescan, reconReport }) {
   const [inputUrl, setInputUrl] = useState('');
+  const [scanMode, setScanMode] = useState('passive'); // 'passive' | 'active'
+  const [hasConsent, setHasConsent] = useState(false);
+  const [scanDepth, setScanDepth] = useState('standard'); // 'standard' | 'deep'
+  const [consentError, setConsentError] = useState(false);
   const [includeSecurity, setIncludeSecurity] = useState(true);
   const [includeTechStack, setIncludeTechStack] = useState(true);
   const [includeSeo, setIncludeSeo] = useState(true);
@@ -63,7 +68,9 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
   const [showGridDuringScan, setShowGridDuringScan] = useState(true);
   const [downloadingDirect, setDownloadingDirect] = useState(false);
   const [downloadDirectSuccess, setDownloadDirectSuccess] = useState(false);
-  const [activeEngineTab, setActiveEngineTab] = useState('security'); // 'security' | 'techstack' | 'seo' | 'osint'
+  const [downloadingDirectJson, setDownloadingDirectJson] = useState(false);
+  const [downloadDirectJsonSuccess, setDownloadDirectJsonSuccess] = useState(false);
+  const [activeEngineTab, setActiveEngineTab] = useState('osint'); // 'osint' | 'security' | 'techstack' | 'seo' | 'evidence'
   const [activeSeoTab, setActiveSeoTab] = useState('overview');
 
   const { status: secStatus, report: secReport, error: secError, isRateLimited, retryCountdown } = scannerState;
@@ -92,25 +99,49 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
     if (activeEngineTab === 'security' && (!includeSecurity || !secReport)) {
       if (includeTechStack && techReport) setActiveEngineTab('techstack');
       else if (includeSeo && seoReport) setActiveEngineTab('seo');
+      else setActiveEngineTab('osint');
     } else if (activeEngineTab === 'techstack' && (!includeTechStack || !techReport)) {
       if (includeSecurity && secReport) setActiveEngineTab('security');
       else if (includeSeo && seoReport) setActiveEngineTab('seo');
+      else setActiveEngineTab('osint');
     } else if (activeEngineTab === 'seo' && (!includeSeo || !seoReport)) {
       if (includeSecurity && secReport) setActiveEngineTab('security');
       else if (includeTechStack && techReport) setActiveEngineTab('techstack');
+      else setActiveEngineTab('osint');
     }
   }, [includeSecurity, includeTechStack, includeSeo, secReport, techReport, seoReport, activeEngineTab]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (inputUrl.trim()) {
-      onScan(inputUrl.trim(), { includeSecurity, includeTechStack, includeSeo });
+    if (!inputUrl.trim()) return;
+
+    if (scanMode === 'active' && !hasConsent) {
+      setConsentError(true);
+      return;
     }
+    setConsentError(false);
+
+    onScan(inputUrl.trim(), {
+      includeSecurity,
+      includeTechStack,
+      includeSeo,
+      mode: scanMode,
+      hasConsent,
+      depth: scanDepth,
+    });
   };
 
   const handleSampleClick = (url) => {
     setInputUrl(url);
-    onScan(url, { includeSecurity, includeTechStack, includeSeo });
+    setConsentError(false);
+    onScan(url, {
+      includeSecurity,
+      includeTechStack,
+      includeSeo,
+      mode: scanMode,
+      hasConsent,
+      depth: scanDepth,
+    });
   };
 
   const toggleSecurity = () => {
@@ -144,6 +175,42 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
         }, 500);
       }
     }, 250);
+  };
+
+  const handleDirectJsonDownload = () => {
+    setDownloadingDirectJson(true);
+    setDownloadDirectJsonSuccess(false);
+    try {
+      const payload = {
+        target: inputUrl,
+        mode: scanMode,
+        timestamp: new Date().toISOString(),
+        securityReport: activeSecReport,
+        domainRecon: reconReport || activeSecReport?.domainRecon,
+        techStack: activeTechReport,
+        seo: activeSeoReport,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const cleanHost = (activeSecReport?.hostname || inputUrl || 'target')
+        .replace(/^https?:\/\//i, '')
+        .replace(/[^a-zA-Z0-9.-]/g, '_');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `WebVitals_Scan_${cleanHost}_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setDownloadDirectJsonSuccess(true);
+    } catch (err) {
+      console.error('JSON export error:', err);
+    } finally {
+      setTimeout(() => {
+        setDownloadingDirectJson(false);
+        setTimeout(() => setDownloadDirectJsonSuccess(false), 2500);
+      }, 500);
+    }
   };
 
   const getGradeColor = (grade) => {
@@ -215,8 +282,69 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
           </p>
         </div>
 
-        {/* Live Scanner Search Bar & Engine Checkboxes */}
-        <div className="max-w-3xl mx-auto mb-10">
+        {/* Live Scanner Search Bar & Advanced Mode Selectors */}
+        <div className="max-w-3xl mx-auto mb-10 space-y-3">
+          {/* Scan Mode & Depth Control Bar */}
+          <div className="bg-white border-2 border-black rounded-xl p-3 brutal-shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold font-space text-zinc-600 uppercase tracking-wider">Mode:</span>
+              <div className="inline-flex rounded-lg border-2 border-black overflow-hidden brutal-shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => { setScanMode('passive'); setConsentError(false); }}
+                  className={`px-3 py-1 text-xs font-bold font-space transition-colors cursor-pointer ${
+                    scanMode === 'passive'
+                      ? 'bg-black text-white'
+                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                  }`}
+                  title="Passive Scan: Non-intrusive DNS, HTTP, TLS, headers, and OSINT digital footprint."
+                >
+                  PASSIVE SCAN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScanMode('active')}
+                  className={`px-3 py-1 text-xs font-bold font-space transition-colors cursor-pointer ${
+                    scanMode === 'active'
+                      ? 'bg-[#fde047] text-black font-extrabold'
+                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                  }`}
+                  title="Active Scan: Bounded port probes (80, 443, 8080, 8443, 22, 21, 25, 53) & extended handshake testing."
+                >
+                  ACTIVE SCAN
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold font-space text-zinc-600 uppercase tracking-wider">Depth:</span>
+              <div className="inline-flex rounded-lg border-2 border-black overflow-hidden brutal-shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setScanDepth('standard')}
+                  className={`px-3 py-1 text-xs font-bold font-space transition-colors cursor-pointer ${
+                    scanDepth === 'standard'
+                      ? 'bg-black text-white'
+                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                  }`}
+                >
+                  Standard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScanDepth('deep')}
+                  className={`px-3 py-1 text-xs font-bold font-space transition-colors cursor-pointer ${
+                    scanDepth === 'deep'
+                      ? 'bg-[#bfdbfe] text-black font-extrabold'
+                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                  }`}
+                >
+                  Deep
+                </button>
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="relative">
             <div className="bg-white p-2.5 rounded-2xl border-2 border-black brutal-shadow-lg flex flex-col sm:flex-row gap-2.5 items-stretch">
               <div className="flex-1 flex items-center gap-3 px-3 bg-zinc-50 rounded-xl border-2 border-black/10">
@@ -224,7 +352,10 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
                 <input
                   type="text"
                   value={inputUrl}
-                  onChange={(e) => setInputUrl(e.target.value)}
+                  onChange={(e) => {
+                    setInputUrl(e.target.value);
+                    if (consentError) setConsentError(false);
+                  }}
                   placeholder="Enter URL to audit (e.g. github.com, wordpress.org)..."
                   className="w-full bg-transparent py-3 text-base font-medium font-space outline-none text-zinc-900 placeholder:text-zinc-400"
                 />
@@ -248,6 +379,59 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
               </button>
             </div>
           </form>
+
+          {/* Target Normalization Feedback */}
+          {inputUrl.trim() && (
+            <div className="px-3 py-1.5 bg-zinc-100 border border-zinc-300 rounded-lg text-xs font-mono text-zinc-700 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-zinc-400 uppercase">Normalized Target:</span>
+                <span className="font-bold text-black truncate">
+                  {inputUrl.trim().startsWith('http://') || inputUrl.trim().startsWith('https://')
+                    ? inputUrl.trim()
+                    : `https://${inputUrl.trim()}`}
+                </span>
+              </div>
+              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold text-[10px] uppercase border border-emerald-300">
+                HTTPS Auto-Detection Active
+              </span>
+            </div>
+          )}
+
+          {/* Active Mode Consent Acknowledgement Warning */}
+          {scanMode === 'active' && (
+            <div className={`p-3.5 rounded-xl border-2 border-black brutal-shadow-sm space-y-2 transition-all ${
+              consentError ? 'bg-red-50 border-red-600' : 'bg-amber-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-800 stroke-[2.5]" />
+                <span className="text-xs font-bold font-space text-amber-950 uppercase tracking-wide">
+                  Active Security Probing Authorization Required
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-700 font-medium leading-relaxed">
+                Active scanning triggers bounded TCP socket handshakes (ports 80, 443, 8080, 8443, 22, 21, 25, 53) and deep TLS cipher suite tests.
+              </p>
+              <label className="flex items-start gap-2.5 text-xs font-bold font-space text-black cursor-pointer select-none pt-1">
+                <input
+                  type="checkbox"
+                  checked={hasConsent}
+                  onChange={(e) => {
+                    setHasConsent(e.target.checked);
+                    if (e.target.checked) setConsentError(false);
+                  }}
+                  className="w-4 h-4 mt-0.5 rounded border-2 border-black accent-black cursor-pointer"
+                />
+                <span className="leading-tight">
+                  I acknowledge and confirm I have explicit authorization or ownership to perform active diagnostic probing on this target host.
+                </span>
+              </label>
+              {consentError && (
+                <div className="text-[11px] font-bold text-red-600 font-mono pt-1">
+                  ⚠️ Authorization acknowledgement is mandatory to run Active Scans. Please check the box above or switch to Passive Scan.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Engine Selector Checkboxes */}
           <div className="mt-4 p-3.5 bg-white border-2 border-black rounded-xl brutal-shadow-sm flex flex-wrap items-center justify-between gap-3">
@@ -476,6 +660,36 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
 
                 <div className="flex flex-col items-end gap-3 w-full md:w-auto justify-between border-t md:border-t-0 pt-4 md:pt-0 border-black/10">
                   <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Direct 1-Click Smooth JSON Export */}
+                    <button
+                      type="button"
+                      onClick={handleDirectJsonDownload}
+                      disabled={downloadingDirectJson}
+                      className={`px-3.5 py-2.5 rounded-xl border-2 border-black font-bold text-xs md:text-sm font-space brutal-shadow-sm flex items-center gap-1.5 cursor-pointer transition-all ${
+                        downloadDirectJsonSuccess
+                          ? 'bg-[#86efac] text-black'
+                          : 'bg-white hover:bg-zinc-100 text-black brutal-hover'
+                      } disabled:opacity-75`}
+                      title="Direct 1-Click Standardized Scan JSON Export"
+                    >
+                      {downloadingDirectJson ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin stroke-[2.5]" />
+                          <span>Exporting...</span>
+                        </>
+                      ) : downloadDirectJsonSuccess ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-800 stroke-[2.5]" />
+                          <span>JSON Exported!</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileJson className="w-4 h-4 stroke-[2]" />
+                          <span>Export JSON</span>
+                        </>
+                      )}
+                    </button>
+
                     {/* Direct 1-Click Smooth PDF Report Download */}
                     <button
                       type="button"
@@ -638,6 +852,22 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
                 <Globe className="w-4 h-4 stroke-[2.5]" />
                 <span>Deep OSINT Grid (35 Modules)</span>
               </button>
+
+              {/* Engine Tab 5: Raw Evidence Inspector */}
+              {activeSecReport && (
+                <button
+                  type="button"
+                  onClick={() => setActiveEngineTab('evidence')}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 font-bold text-sm font-space transition-all cursor-pointer ${
+                    activeEngineTab === 'evidence'
+                      ? 'bg-zinc-900 text-white border-black brutal-shadow'
+                      : 'bg-white text-zinc-800 border-zinc-300 hover:border-black'
+                  }`}
+                >
+                  <Terminal className="w-4 h-4 stroke-[2.5]" />
+                  <span>Raw Evidence Inspector</span>
+                </button>
+              )}
 
               {/* View Circuit Map Toggle Button */}
               <button
@@ -861,6 +1091,16 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
                   secReport={activeSecReport}
                   techReport={activeTechReport}
                   seoReport={activeSeoReport}
+                />
+              </div>
+            )}
+
+            {/* TAB 5: RAW EVIDENCE INSPECTOR VIEW */}
+            {activeEngineTab === 'evidence' && activeSecReport && (
+              <div className="animate-in fade-in duration-200">
+                <RawEvidenceInspector
+                  report={activeSecReport}
+                  reconReport={reconReport || activeSecReport?.domainRecon}
                 />
               </div>
             )}
