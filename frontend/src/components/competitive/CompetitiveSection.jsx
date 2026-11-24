@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useCompetitiveScanner } from '../../hooks/useCompetitiveScanner';
 import CompetitiveIntelligenceDashboard from './CompetitiveIntelligenceDashboard';
+import ErrorBoundary from '../ErrorBoundary';
 
 const SAMPLE_COMPARISONS = [
   {
@@ -244,7 +245,9 @@ export default function CompetitiveSection() {
         {/* Live Comparison Dashboard */}
         {report && (
           <div className="mt-12">
-            <CompetitiveIntelligenceDashboard report={report} />
+            <ErrorBoundary title="Competitive Intelligence Dashboard">
+              <CompetitiveIntelligenceDashboard report={report} />
+            </ErrorBoundary>
           </div>
         )}
       </div>

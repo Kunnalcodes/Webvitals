@@ -82,16 +82,18 @@ export default function CompetitiveIntelligenceDashboard({ report }) {
     aiIntelligence = {},
   } = report;
 
-  const allKeywords = keywordIntelligence.allKeywords || [];
+  const allKeywords = Array.isArray(keywordIntelligence.allKeywords) ? keywordIntelligence.allKeywords : [];
   const keywordBuckets = keywordIntelligence.buckets || {};
-  const topOpportunities = keywordIntelligence.topOpportunities || [];
+  const topOpportunities = Array.isArray(keywordIntelligence.topOpportunities) ? keywordIntelligence.topOpportunities : [];
+  const safeOverviewComparison = Array.isArray(overviewComparison) ? overviewComparison : [];
 
-  // Filter keywords
+  // Filter keywords safely
   const filteredKeywords = allKeywords.filter(k => {
+    if (!k) return false;
     if (keywordFilter !== 'ALL' && k.gapCategory !== keywordFilter) return false;
     if (keywordSearch.trim()) {
       const q = keywordSearch.toLowerCase();
-      return k.keyword.toLowerCase().includes(q) || (k.category || '').toLowerCase().includes(q);
+      return (k.keyword || '').toLowerCase().includes(q) || (k.category || '').toLowerCase().includes(q);
     }
     return true;
   });
@@ -270,7 +272,7 @@ export default function CompetitiveIntelligenceDashboard({ report }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200">
-                {overviewComparison.map((row, idx) => (
+                {safeOverviewComparison.map((row, idx) => (
                   <tr key={idx} className="hover:bg-zinc-50 transition-colors">
                     <td className="p-3 font-bold text-black">{row.metric}</td>
                     <td className="p-3 font-mono font-bold text-zinc-900">{row.primaryValue}</td>
@@ -734,11 +736,11 @@ export default function CompetitiveIntelligenceDashboard({ report }) {
 
           <div className="space-y-6">
             {[
-              { title: 'Phase 1: Fix (Technical & Entity Hygiene)', items: growthStrategy.phase1Fix || [], bg: 'bg-rose-50/50' },
-              { title: 'Phase 2: Capture (High-Value Keywords & Question Gaps)', items: growthStrategy.phase2Capture || [], bg: 'bg-amber-50/50' },
-              { title: 'Phase 3: Build Authority (Pillars & Proof)', items: growthStrategy.phase3Authority || [], bg: 'bg-blue-50/50' },
-              { title: 'Phase 4: Expand (New Verticals & Clusters)', items: growthStrategy.phase4Expand || [], bg: 'bg-purple-50/50' },
-              { title: 'Phase 5: Optimize (Internal Linking & Freshness)', items: growthStrategy.phase5Optimize || [], bg: 'bg-emerald-50/50' },
+              { title: 'Phase 1: Fix (Technical & Entity Hygiene)', items: Array.isArray(growthStrategy.phase1Fix) ? growthStrategy.phase1Fix : [], bg: 'bg-rose-50/50' },
+              { title: 'Phase 2: Capture (High-Value Keywords & Question Gaps)', items: Array.isArray(growthStrategy.phase2Capture) ? growthStrategy.phase2Capture : [], bg: 'bg-amber-50/50' },
+              { title: 'Phase 3: Build Authority (Pillars & Proof)', items: Array.isArray(growthStrategy.phase3Authority) ? growthStrategy.phase3Authority : [], bg: 'bg-blue-50/50' },
+              { title: 'Phase 4: Expand (New Verticals & Clusters)', items: Array.isArray(growthStrategy.phase4Expand) ? growthStrategy.phase4Expand : [], bg: 'bg-purple-50/50' },
+              { title: 'Phase 5: Optimize (Internal Linking & Freshness)', items: Array.isArray(growthStrategy.phase5Optimize) ? growthStrategy.phase5Optimize : [], bg: 'bg-emerald-50/50' },
             ].map((phase, pidx) => (
               <div key={pidx} className={`p-5 rounded-xl border-2 border-black ${phase.bg} space-y-3`}>
                 <h5 className="font-space font-bold text-sm uppercase text-black">{phase.title}</h5>

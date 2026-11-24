@@ -18,9 +18,9 @@ export const CiGateStatus: React.FC<CiGateStatusProps> = ({ scanId, score }) => 
       // If scanId is a valid UUID or saved scan, try to fetch server evaluation
       if (scanId && scanId !== 'scan-latest' && scanId.length > 10) {
         try {
-          const res: any = await checkCiQualityGate(scanId, threshold);
+          const res: any = await checkCiQualityGate(scanId, threshold, score);
           if (mounted && res && !res.error) {
-            setGateResult(res);
+            setGateResult(res.data || res);
             return;
           }
         } catch {

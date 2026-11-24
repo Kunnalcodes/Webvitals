@@ -23,8 +23,12 @@ export async function fetchMarkdownReport(scanId: string): Promise<string> {
   return res.text();
 }
 
-export async function checkCiQualityGate(scanId: string, minScore = 80): Promise<QualityGateResponse> {
-  const res = await fetch(`${API_BASE}/scan/gate?scanId=${encodeURIComponent(scanId)}&minScore=${minScore}`);
-  const data = await res.json();
-  return data;
+export async function checkCiQualityGate(scanId: string, minScore = 80, score?: number): Promise<QualityGateResponse> {
+  const url = `${API_BASE}/scan/gate?scanId=${encodeURIComponent(scanId)}&minScore=${minScore}${score !== undefined ? `&score=${score}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok && res.status !== 422) {
+    throw new Error(`Quality gate check failed with status ${res.status}`);
+  }
+  const json = await res.json();
+  return json.data || json;
 }

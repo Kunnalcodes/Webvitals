@@ -41,6 +41,7 @@ import SeoLighthouseTab from './seo/SeoLighthouseTab';
 import SeoMediaLinksTab from './seo/SeoMediaLinksTab';
 import SeoAiOptimizerTab from './seo/SeoAiOptimizerTab';
 import SeoIntelligenceDashboard from './seo/SeoIntelligenceDashboard';
+import ErrorBoundary from './ErrorBoundary';
 import { ExecutiveSummary } from './ai/ExecutiveSummary';
 import { AIExplanationPanel } from './ai/AIExplanationPanel';
 import { RemediationPlaybook } from './ai/RemediationPlaybook';
@@ -1062,7 +1063,9 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
 
                 <div>
                   {activeSeoTab === 'intelligence' && (
-                    <SeoIntelligenceDashboard report={activeSeoReport} />
+                    <ErrorBoundary title="SEO / GEO / AEO Intelligence Dashboard">
+                      <SeoIntelligenceDashboard report={activeSeoReport} />
+                    </ErrorBoundary>
                   )}
 
                   {activeSeoTab === 'overview' && (

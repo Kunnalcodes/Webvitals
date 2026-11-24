@@ -234,7 +234,8 @@ async function buildSeoIntelligenceReport({
     strategyMatrix: strategyData.strategyMatrix,
 
     // Prioritized Improvement Roadmap (P0, P1, P2, P3)
-    roadmap: recommendationData.grouped,
+    roadmap: Object.assign([...recommendationData.list], recommendationData.grouped),
+    roadmapGrouped: recommendationData.grouped,
     allRecommendations: recommendationData.list,
 
     // Vertex AI Strategic Narrative & Draft Workspace

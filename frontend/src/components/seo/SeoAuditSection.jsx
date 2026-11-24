@@ -24,6 +24,7 @@ import SeoLighthouseTab from './SeoLighthouseTab';
 import SeoMediaLinksTab from './SeoMediaLinksTab';
 import SeoAiOptimizerTab from './SeoAiOptimizerTab';
 import SeoIntelligenceDashboard from './SeoIntelligenceDashboard';
+import ErrorBoundary from '../ErrorBoundary';
 
 const SAMPLE_SEO_PREVIEWS = [
   {
@@ -163,7 +164,11 @@ export default function SeoAuditSection({ seoState, onScan }) {
             </div>
 
             <div>
-              {activeTab === 'intelligence' && <SeoIntelligenceDashboard report={report} />}
+              {activeTab === 'intelligence' && (
+                <ErrorBoundary title="SEO / GEO / AEO Intelligence Dashboard">
+                  <SeoIntelligenceDashboard report={report} />
+                </ErrorBoundary>
+              )}
               {activeTab === 'overview' && (
                 <div>
                   <SeoCategoryCards categories={report.categories} />

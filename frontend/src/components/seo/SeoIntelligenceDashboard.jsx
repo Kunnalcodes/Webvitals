@@ -93,7 +93,7 @@ function ScoreMeterCard({ title, score = 0, rating = 'Moderate', subtitle, facto
         </div>
       </div>
 
-      {factors && factors.length > 0 && (
+      {Array.isArray(factors) && factors.length > 0 && (
         <div className="pt-3 border-t border-zinc-200 mt-2 space-y-1.5">
           <span className="text-[10px] font-space font-bold uppercase tracking-wider text-zinc-400 block mb-1">
             Core Factor Drivers:
@@ -158,8 +158,16 @@ export default function SeoIntelligenceDashboard({ report }) {
   const seoModule = intelligence.seoModule || {};
   const geoModule = intelligence.geoModule || report.geo || {};
   const aeoModule = intelligence.aeoModule || report.aeo || {};
-  const strategyMatrix = intelligence.strategyMatrix || report.strategyMatrix || [];
-  const roadmap = intelligence.roadmap || report.roadmap || [];
+  const rawMatrix = intelligence.strategyMatrix || report.strategyMatrix;
+  const strategyMatrix = Array.isArray(rawMatrix) ? rawMatrix : [];
+
+  const rawRoadmap = intelligence.roadmap || report.roadmap || intelligence.allRecommendations || report.allRecommendations;
+  const roadmap = Array.isArray(rawRoadmap)
+    ? rawRoadmap
+    : (rawRoadmap && typeof rawRoadmap === 'object')
+    ? (Array.isArray(rawRoadmap.items) ? rawRoadmap.items : Object.values(rawRoadmap).filter(Array.isArray).flat())
+    : [];
+
   const aiIntelligence = intelligence.aiIntelligence || report.aiIntelligence || {};
   const narrative = aiIntelligence.strategicNarrative || {};
   const workspace = aiIntelligence.pageOptimizationWorkspace || {};
@@ -171,11 +179,14 @@ export default function SeoIntelligenceDashboard({ report }) {
   const [expandedRoadmapItem, setExpandedRoadmapItem] = useState(null);
   const [workspaceDraftTab, setWorkspaceDraftTab] = useState('titles');
 
-  // Filter roadmap
-  const filteredRoadmap = roadmap.filter((item) => {
-    if (selectedRoadmapFilter === 'ALL') return true;
-    return item.priority === selectedRoadmapFilter;
-  });
+  // Filter roadmap safely
+  const filteredRoadmap = Array.isArray(roadmap)
+    ? roadmap.filter((item) => {
+        if (!item) return false;
+        if (selectedRoadmapFilter === 'ALL') return true;
+        return item.priority === selectedRoadmapFilter;
+      })
+    : [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -611,7 +622,7 @@ export default function SeoIntelligenceDashboard({ report }) {
           </div>
 
           {/* Top Discoverability Bottlenecks */}
-          {narrative.topBottlenecks && narrative.topBottlenecks.length > 0 && (
+          {Array.isArray(narrative.topBottlenecks) && narrative.topBottlenecks.length > 0 && (
             <div className="border-2 border-black rounded-xl p-5 bg-white space-y-3">
               <span className="text-xs font-space font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" /> Top Discoverability & Citation Bottlenecks
@@ -659,7 +670,7 @@ export default function SeoIntelligenceDashboard({ report }) {
                 Intent Confidence: <strong>{Math.round((seoModule.searchIntent.confidence || 0.8) * 100)}%</strong> • Mismatches Detected: <strong>{seoModule.searchIntent.mismatches?.length || 0}</strong>
               </p>
 
-              {seoModule.searchIntent.mismatches && seoModule.searchIntent.mismatches.length > 0 && (
+              {Array.isArray(seoModule.searchIntent.mismatches) && seoModule.searchIntent.mismatches.length > 0 && (
                 <div className="mt-2 space-y-2">
                   {seoModule.searchIntent.mismatches.map((m, idx) => (
                     <div key={idx} className="bg-amber-50 border border-amber-300 rounded p-2.5 text-xs font-space text-amber-900">
@@ -682,7 +693,7 @@ export default function SeoIntelligenceDashboard({ report }) {
               </span>
             </div>
 
-            {seoModule.onPageHierarchy?.hierarchyErrors?.length > 0 && (
+            {Array.isArray(seoModule.onPageHierarchy?.hierarchyErrors) && seoModule.onPageHierarchy.hierarchyErrors.length > 0 && (
               <div className="bg-rose-50 border border-rose-300 rounded p-3 text-xs font-space text-rose-900 space-y-1">
                 <span className="font-bold block">Heading Hierarchy Discrepancies:</span>
                 {seoModule.onPageHierarchy.hierarchyErrors.map((err, idx) => (
@@ -692,7 +703,7 @@ export default function SeoIntelligenceDashboard({ report }) {
             )}
 
             <div className="bg-zinc-950 text-zinc-200 rounded-lg p-4 font-mono text-xs max-h-80 overflow-y-auto space-y-1 border-2 border-black">
-              {seoModule.onPageHierarchy?.headings && seoModule.onPageHierarchy.headings.length > 0 ? (
+              {Array.isArray(seoModule.onPageHierarchy?.headings) && seoModule.onPageHierarchy.headings.length > 0 ? (
                 seoModule.onPageHierarchy.headings.map((h, idx) => {
                   const indent = (h.level - 1) * 16;
                   return (
@@ -882,7 +893,7 @@ export default function SeoIntelligenceDashboard({ report }) {
                 <HelpCircle className="w-4 h-4 text-blue-600" /> Missing High-Value Candidate Queries
               </span>
               <div className="space-y-1.5 text-xs font-space max-h-48 overflow-y-auto">
-                {aeoModule.questionCoverage?.missingQueries && aeoModule.questionCoverage.missingQueries.length > 0 ? (
+                {Array.isArray(aeoModule.questionCoverage?.missingQueries) && aeoModule.questionCoverage.missingQueries.length > 0 ? (
                   aeoModule.questionCoverage.missingQueries.slice(0, 4).map((q, idx) => (
                     <div key={idx} className="bg-white p-2 rounded border border-zinc-200 flex items-center justify-between">
                       <span className="text-zinc-800">{q.query}</span>
@@ -1012,13 +1023,13 @@ export default function SeoIntelligenceDashboard({ report }) {
                 <span className="text-xs font-space font-bold uppercase tracking-wider text-zinc-500 block">
                   Recommended Content Outlines
                 </span>
-                {(workspace.recommendedContentOutlines || [
+                {(Array.isArray(workspace.recommendedContentOutlines) ? workspace.recommendedContentOutlines : [
                   { title: 'Core Features & Technical Architecture', points: ['Network Intelligence', 'Security Analysis', 'Performance Auditing'] }
                 ]).map((outl, idx) => (
                   <div key={idx} className="p-4 bg-zinc-50 rounded-lg border-2 border-black space-y-2">
                     <h5 className="font-space font-bold text-sm text-black">{outl.title || outl.section}</h5>
                     <ul className="list-disc pl-5 text-xs text-zinc-700 space-y-1">
-                      {(outl.points || outl.subtopics || []).map((pt, pidx) => (
+                      {(Array.isArray(outl.points) ? outl.points : Array.isArray(outl.subtopics) ? outl.subtopics : []).map((pt, pidx) => (
                         <li key={pidx}>{pt}</li>
                       ))}
                     </ul>
