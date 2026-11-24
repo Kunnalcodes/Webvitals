@@ -45,9 +45,12 @@ import { RemediationPlaybook } from './ai/RemediationPlaybook';
 import { SecurityChat } from './ai/SecurityChat';
 import { ExportMenu } from './exports/ExportMenu';
 import { CiGateStatus } from './exports/CiGateStatus';
+import CircuitProgressDashboard from './CircuitProgressDashboard';
+import WebCheckDashboardGrid from './WebCheckDashboardGrid';
+import { generateSecurityPdf } from '../utils/pdfExportService';
 import { MessageSquare, Bot } from 'lucide-react';
 
-export default function Hero({ scannerState, techStackState, seoState, onScan, onRescan }) {
+export default function Hero({ scannerState, techStackState, seoState, onScan, onRescan, reconReport }) {
   const [inputUrl, setInputUrl] = useState('');
   const [includeSecurity, setIncludeSecurity] = useState(true);
   const [includeTechStack, setIncludeTechStack] = useState(true);
@@ -56,7 +59,11 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [showBenchmark, setShowBenchmark] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [activeEngineTab, setActiveEngineTab] = useState('security'); // 'security' | 'techstack' | 'seo'
+  const [showCircuitView, setShowCircuitView] = useState(false);
+  const [showGridDuringScan, setShowGridDuringScan] = useState(true);
+  const [downloadingDirect, setDownloadingDirect] = useState(false);
+  const [downloadDirectSuccess, setDownloadDirectSuccess] = useState(false);
+  const [activeEngineTab, setActiveEngineTab] = useState('security'); // 'security' | 'techstack' | 'seo' | 'osint'
   const [activeSeoTab, setActiveSeoTab] = useState('overview');
 
   const { status: secStatus, report: secReport, error: secError, isRateLimited, retryCountdown } = scannerState;
@@ -119,6 +126,24 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
   const toggleSeo = () => {
     if (includeSeo && !includeSecurity && !includeTechStack) return;
     setIncludeSeo(!includeSeo);
+  };
+
+  const handleDirectPdfDownload = () => {
+    setDownloadingDirect(true);
+    setDownloadDirectSuccess(false);
+    setTimeout(() => {
+      try {
+        generateSecurityPdf(activeSecReport, activeTechReport, activeSeoReport);
+        setDownloadDirectSuccess(true);
+      } catch (err) {
+        console.error('PDF generation error:', err);
+      } finally {
+        setTimeout(() => {
+          setDownloadingDirect(false);
+          setTimeout(() => setDownloadDirectSuccess(false), 2500);
+        }, 500);
+      }
+    }, 250);
   };
 
   const getGradeColor = (grade) => {
@@ -352,82 +377,53 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
           </div>
         )}
 
-        {/* Live Perimeter Threat & Telemetry Thread Feed */}
+        {/* Live Perimeter Threat & Circuit Microprocessor Diagnostics Feed */}
         {isAnyScanning && (
-          <div className="max-w-4xl mx-auto mb-12 bg-white border-2 border-black rounded-2xl p-6 md:p-8 brutal-shadow-lg animate-in fade-in duration-300">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-5 border-b-2 border-black/10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-[#86efac] rounded-xl border-2 border-black flex items-center justify-center brutal-shadow-sm flex-shrink-0 animate-spin">
-                  <RefreshCw className="w-6 h-6 stroke-[2.5]" />
-                </div>
-                <div>
+          <div className="max-w-5xl mx-auto mb-12 space-y-8 animate-in fade-in duration-300">
+            {/* Central Microprocessor & 43 Checks Circuit Canvas in Lighter Tone */}
+            <CircuitProgressDashboard
+              targetUrl={inputUrl}
+              hostname={activeSecReport?.hostname || (inputUrl ? inputUrl.replace(/^https?:\/\//i, '').replace(/\/.*$/, '') : 'target.com')}
+              isScanning={isAnyScanning}
+              progress={scannerState.progress || 35}
+              stageLogs={scannerState.stageLogs || []}
+              secReport={activeSecReport}
+              techReport={activeTechReport}
+              seoReport={activeSeoReport}
+              showFullGrid={showGridDuringScan}
+              onToggleView={() => setShowGridDuringScan(!showGridDuringScan)}
+            />
+
+            {/* As requested: All data being gathered and responses appear progressively on screen below */}
+            {showGridDuringScan && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="flex items-center justify-between px-2 pt-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider font-space">
-                      Live Audit Stream
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fde047] border border-black uppercase font-mono animate-pulse">
-                      {scannerState.currentStage || 'PROBING'}
-                    </span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    <h4 className="text-xs md:text-sm font-mono font-bold uppercase tracking-wider text-zinc-800">
+                      Live Ingress Intelligence Gathering Grid
+                    </h4>
                   </div>
-                  <h3 className="text-lg md:text-xl font-bold font-space text-black truncate max-w-md">
-                    Probing: <span className="underline">{inputUrl}</span>
-                  </h3>
+                  <span className="text-[11px] font-mono text-zinc-500 bg-zinc-200/80 px-2 py-0.5 rounded border border-zinc-300 font-bold">
+                    Responses Streaming Active
+                  </span>
                 </div>
-              </div>
 
-              {/* Progress percentage pill */}
-              <div className="bg-black text-white px-4 py-2 rounded-xl border-2 border-black font-space flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Progress</div>
-                  <div className="text-lg font-black text-[#86efac] font-mono">{scannerState.progress || 35}%</div>
-                </div>
+                <WebCheckDashboardGrid
+                  reconReport={reconReport || scannerState.report?.domainRecon}
+                  targetHost={inputUrl ? inputUrl.replace(/^https?:\/\//i, '').replace(/\/.*$/, '') : 'target.com'}
+                  secReport={activeSecReport}
+                  techReport={activeTechReport}
+                  seoReport={activeSeoReport}
+                />
               </div>
-            </div>
+            )}
 
-            {/* Animated Progress Bar */}
-            <div className="mt-5 space-y-2">
-              <div className="w-full bg-zinc-100 h-3 rounded-full overflow-hidden border-2 border-black">
-                <div
-                  className="bg-[#86efac] h-full transition-all duration-300 relative overflow-hidden"
-                  style={{ width: `${Math.max(15, scannerState.progress || 35)}%` }}
-                >
-                  <div className="absolute inset-0 bg-white/30 animate-pulse" />
-                </div>
-              </div>
-            </div>
-
-            {/* Active Engine Diagnostics Badges */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
-              <div className={`p-3 rounded-xl border-2 font-space text-xs flex items-center gap-2.5 ${
-                includeSecurity ? 'bg-[#86efac]/20 border-black text-black font-bold' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
-              }`}>
-                <Shield className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">1. Perimeter & TLS Probe</span>
-                {includeSecurity && <span className="w-2 h-2 rounded-full bg-green-500 animate-ping ml-auto" />}
-              </div>
-
-              <div className={`p-3 rounded-xl border-2 font-space text-xs flex items-center gap-2.5 ${
-                includeTechStack ? 'bg-[#bfdbfe]/20 border-black text-black font-bold' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
-              }`}>
-                <Boxes className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">2. Hosting & Stack Detector</span>
-                {includeTechStack && <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping ml-auto" />}
-              </div>
-
-              <div className={`p-3 rounded-xl border-2 font-space text-xs flex items-center gap-2.5 ${
-                includeSeo ? 'bg-[#fde047]/20 border-black text-black font-bold' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
-              }`}>
-                <Sparkles className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">3. Technical SEO & Vitals</span>
-                {includeSeo && <span className="w-2 h-2 rounded-full bg-yellow-500 animate-ping ml-auto" />}
-              </div>
-            </div>
-
-            {/* Live Terminal Log Stream */}
-            <div className="mt-5 bg-[#18181b] text-zinc-200 rounded-xl border-2 border-black p-4 font-mono text-xs max-h-48 overflow-y-auto space-y-1.5 shadow-inner">
-              <div className="text-[11px] text-zinc-500 font-bold border-b border-zinc-800 pb-1 mb-2 flex items-center justify-between">
+            {/* Live Terminal Log Stream Collapsible */}
+            <div className="bg-[#18181b] text-zinc-200 rounded-2xl border-2 border-black p-4 md:p-5 font-mono text-xs max-h-48 overflow-y-auto space-y-1.5 brutal-shadow">
+              <div className="text-[11px] text-zinc-400 font-bold border-b border-zinc-800 pb-1.5 mb-2 flex items-center justify-between">
                 <span>TERMINAL TELEMETRY FEED</span>
-                <span className="text-green-400">STREAMING ACTIVE</span>
+                <span className="text-emerald-400 font-bold">STREAMING ACTIVE</span>
               </div>
               {scannerState.stageLogs && scannerState.stageLogs.length > 0 ? (
                 scannerState.stageLogs.map((log, idx) => (
@@ -480,6 +476,36 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
 
                 <div className="flex flex-col items-end gap-3 w-full md:w-auto justify-between border-t md:border-t-0 pt-4 md:pt-0 border-black/10">
                   <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Direct 1-Click Smooth PDF Report Download */}
+                    <button
+                      type="button"
+                      onClick={handleDirectPdfDownload}
+                      disabled={downloadingDirect}
+                      className={`px-4 py-2.5 rounded-xl border-2 border-black font-bold text-xs md:text-sm font-space brutal-shadow-sm flex items-center gap-2 cursor-pointer transition-all ${
+                        downloadDirectSuccess
+                          ? 'bg-[#86efac] text-black'
+                          : 'bg-[#fde047] hover:bg-yellow-300 text-black brutal-hover'
+                      } disabled:opacity-75`}
+                      title="Direct 1-Click PDF Report Download"
+                    >
+                      {downloadingDirect ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin stroke-[2.5]" />
+                          <span>Preparing PDF...</span>
+                        </>
+                      ) : downloadDirectSuccess ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-black stroke-[2.5]" />
+                          <span>Report Downloaded!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 stroke-[2.5]" />
+                          <span>Download PDF</span>
+                        </>
+                      )}
+                    </button>
+
                     {/* Side-by-Side Benchmark Toggle */}
                     {activeSecReport && (
                       <button
@@ -535,6 +561,23 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
               )}
             </div>
 
+            {/* Optional Collapsible Circuit Processor Map in Results */}
+            {showCircuitView && (
+              <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                <CircuitProgressDashboard
+                  targetUrl={activeSecReport?.finalUrl || inputUrl}
+                  hostname={activeSecReport?.hostname || (inputUrl ? inputUrl.replace(/^https?:\/\//i, '').replace(/\/.*$/, '') : 'target.com')}
+                  isScanning={false}
+                  progress={100}
+                  secReport={activeSecReport}
+                  techReport={activeTechReport}
+                  seoReport={activeSeoReport}
+                  showFullGrid={false}
+                  onToggleView={() => setShowCircuitView(false)}
+                />
+              </div>
+            )}
+
             {/* Interactive Engine Tabs Switcher — ONLY SHOW TABS FOR SELECTED MODULES */}
             <div className="flex flex-wrap items-center gap-2 border-b-2 border-black pb-3">
               {activeSecReport && (
@@ -581,6 +624,31 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
                   <span>SEO Audit ({activeSeoReport.score}/100)</span>
                 </button>
               )}
+
+              {/* Engine Tab 4: Deep OSINT Perimeter Intelligence Grid (35 Modules) */}
+              <button
+                type="button"
+                onClick={() => setActiveEngineTab('osint')}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 font-bold text-sm font-space transition-all cursor-pointer ${
+                  activeEngineTab === 'osint'
+                    ? 'bg-[#86efac] text-black border-black brutal-shadow'
+                    : 'bg-white text-zinc-800 border-zinc-300 hover:border-black'
+                }`}
+              >
+                <Globe className="w-4 h-4 stroke-[2.5]" />
+                <span>Deep OSINT Grid (35 Modules)</span>
+              </button>
+
+              {/* View Circuit Map Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowCircuitView(!showCircuitView)}
+                className="ml-auto px-4 py-2.5 bg-white hover:bg-zinc-100 text-black border-2 border-black rounded-xl font-bold text-xs md:text-sm font-space brutal-shadow-sm brutal-hover flex items-center gap-2 cursor-pointer"
+                title="Toggle Circuit Processor Diagnostics Map"
+              >
+                <Cpu className="w-4 h-4 stroke-[2.2]" />
+                <span>{showCircuitView ? 'Hide Circuit Map' : 'View Circuit Map'}</span>
+              </button>
             </div>
 
             {/* TAB 1: SECURITY AUDIT VIEW */}
@@ -781,6 +849,19 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
 
                   {activeSeoTab === 'media' && <SeoMediaLinksTab report={activeSeoReport} />}
                 </div>
+              </div>
+            )}
+
+            {/* TAB 4: DEEP OSINT INTELLIGENCE GRID (35 MODULES) */}
+            {activeEngineTab === 'osint' && (
+              <div className="animate-in fade-in duration-200">
+                <WebCheckDashboardGrid
+                  reconReport={reconReport || activeSecReport?.domainRecon}
+                  targetHost={activeSecReport?.hostname || (inputUrl ? inputUrl.replace(/^https?:\/\//i, '').replace(/\/.*$/, '') : 'target.com')}
+                  secReport={activeSecReport}
+                  techReport={activeTechReport}
+                  seoReport={activeSeoReport}
+                />
               </div>
             )}
           </div>

@@ -55,6 +55,14 @@ export default function App() {
   const handleScanUrl = (url, options = {}) => {
     const { includeSecurity = true, includeTechStack = true, includeSeo = true } = options;
     
+    // Automatically trigger deep domain reconnaissance
+    fetch(`/api/domain/recon?url=${encodeURIComponent(url)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.data || json) setReconReport(json.data || json);
+      })
+      .catch(() => {});
+
     if (includeSecurity) {
       scanner.scan(url);
     } else {
@@ -92,6 +100,7 @@ export default function App() {
         scannerState={scanner}
         techStackState={techStack}
         seoState={seoScanner}
+        reconReport={reconReport || scanner.report?.domainRecon}
         onScan={handleScanUrl}
         onRescan={handleScanUrl}
       />

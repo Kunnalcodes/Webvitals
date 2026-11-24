@@ -312,12 +312,14 @@ export default function OutputFeedSection({ scannerReport, scannerState, techSta
           </div>
         </div>
 
-        {/* VIEW 1: 12-TILE VISUAL DASHBOARD */}
+        {/* VIEW 1: VISUAL OSINT INTELLIGENCE DASHBOARD (35 MODULES) */}
         {viewMode === 'dashboard' && (
           <div className="space-y-6">
             <WebCheckDashboardGrid
               reconReport={reconReport || scannerReport?.domainRecon}
               targetHost={targetHost}
+              secReport={scannerReport}
+              techReport={techStackReport}
             />
           </div>
         )}
