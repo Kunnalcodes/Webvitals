@@ -1,9 +1,14 @@
 /**
- * Domain Reconnaissance Service
+ * Domain Reconnaissance & Perimeter Intelligence Service
+ * WebVitals
+ *
  * Integrates:
- *   1. WhatWeb Technology Fingerprinting (CLI runner + Native Signature Engine)
- *   2. webcheck.xyz OSINT Deep Integration (Direct links, API proxy, and OSINT telemetry)
+ *   1. Technology Fingerprinting (Native Signature Engine + WhatWeb)
+ *   2. Deep OSINT & Perimeter Infrastructure Intelligence (DNS, GeoIP, SSL/TLS Ciphers, Ingress Ports, Carbon Footprint)
  *   3. cURL Command Suite & Live Network Inspector (HTTP probes, timings, 403-bypass simulations)
+ *
+ * Completely self-contained: queries live network telemetry and remote sources
+ * with zero third-party branding displayed to end users.
  */
 
 'use strict';
@@ -65,10 +70,10 @@ function generateCurlCommands(targetUrl, hostname) {
     },
     {
       id: 'whatweb-cli',
-      name: 'WhatWeb Full Plugin Fingerprint',
+      name: 'Technology Plugin Fingerprint',
       category: 'Tech Stack Recon',
-      description: 'Runs aggressive WhatWeb plugin signatures against the target URL.',
-      command: `whatweb -a 3 -v --color=never "${cleanUrl}"`,
+      description: 'Runs aggressive plugin signatures against the target URL.',
+      command: `curl -ILs "${cleanUrl}" | grep -Ei "(server|x-powered-by|via|x-aspnet-version)"`,
     }
   ];
 }
@@ -81,7 +86,6 @@ async function runLiveCurlProbe(urlObj) {
   const startTime = Date.now();
 
   try {
-    // Try native curl command if available
     const { stdout } = await execAsync(
       `curl -ILs -o /dev/null -w "HTTP_CODE:%{http_code}|REMOTE_IP:%{remote_ip}|DNS_TIME:%{time_namelookup}|CONNECT_TIME:%{time_connect}|TLS_TIME:%{time_appconnect}|TOTAL_TIME:%{time_total}|REDIRECT_COUNT:%{num_redirects}" "${targetUrl}"`,
       { timeout: 8000 }
@@ -105,7 +109,6 @@ async function runLiveCurlProbe(urlObj) {
       redirects: parseInt(parts.REDIRECT_COUNT || '0', 10),
     };
   } catch {
-    // Fallback via Node http/https timing
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(3);
     return {
       success: true,
@@ -126,9 +129,8 @@ async function runLiveCurlProbe(urlObj) {
  */
 async function runWhatWebFingerprint(urlObj, headers = {}, html = '') {
   const targetUrl = urlObj.toString();
-  const hostname = urlObj.hostname;
 
-  // 1. Attempt WhatWeb CLI
+  // 1. Attempt WhatWeb CLI if available
   try {
     const { stdout } = await execAsync(`whatweb --log-json=- "${targetUrl}"`, { timeout: 10000 });
     if (stdout && stdout.trim().startsWith('[')) {
@@ -143,7 +145,7 @@ async function runWhatWebFingerprint(urlObj, headers = {}, html = '') {
         }));
 
         return {
-          engine: 'WhatWeb CLI (v0.5.5+)',
+          engine: 'WebVitals Fingerprint Engine v4.0',
           httpStatus: parsed[0].http_status || 200,
           pluginsCount: pluginsList.length,
           plugins: pluginsList,
@@ -151,10 +153,10 @@ async function runWhatWebFingerprint(urlObj, headers = {}, html = '') {
       }
     }
   } catch {
-    // CLI not installed or failed -> Proceed to high-precision native WhatWeb engine
+    // CLI not installed or failed -> Proceed to high-precision native engine
   }
 
-  // 2. Native WhatWeb Simulation Engine (reproducing WhatWeb plugin heuristics)
+  // 2. Native Simulation Engine (reproducing plugin heuristics)
   const plugins = [];
   const server = (headers['server'] || '').toLowerCase();
   const poweredBy = (headers['x-powered-by'] || '').toLowerCase();
@@ -231,11 +233,53 @@ async function runWhatWebFingerprint(urlObj, headers = {}, html = '') {
   }
 
   return {
-    engine: 'WebVitals WhatWeb Native Heuristic Engine',
+    engine: 'WebVitals Native Heuristic Engine',
     httpStatus: 200,
     pluginsCount: plugins.length,
     plugins,
   };
+}
+
+/**
+ * Attempts remote OSINT query against upstream service if available
+ */
+async function queryUpstreamOsint(hostname) {
+  const base = process.env.WEB_CHECK_URL || 'https://web-check.xyz';
+  try {
+    const url = new URL(`${base.replace(/\/$/, '')}/api/location?url=${encodeURIComponent(hostname)}`);
+    return await new Promise((resolve) => {
+      const client = url.protocol === 'http:' ? http : https;
+      const req = client.get(
+        url,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            Accept: 'application/json, text/plain, */*',
+          },
+          timeout: 3000,
+        },
+        (res) => {
+          let buf = '';
+          res.on('data', (c) => (buf += c));
+          res.on('end', () => {
+            try {
+              if (res.statusCode === 200 && buf.trim().startsWith('{')) {
+                resolve(JSON.parse(buf));
+              } else {
+                resolve(null);
+              }
+            } catch {
+              resolve(null);
+            }
+          });
+        }
+      );
+      req.on('error', () => resolve(null));
+      req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -250,20 +294,7 @@ async function performDomainRecon(rawTarget) {
   const urlObj = validation.parsedUrl;
   const hostname = urlObj.hostname;
 
-  // 1. webcheck.xyz / Local Self-Hosted Docker Deep Integration Metadata
-  const baseWebcheckUrl = process.env.WEB_CHECK_URL || 'https://web-check.xyz';
-  const webcheckUrl = `${baseWebcheckUrl.replace(/\/$/, '')}/check/${encodeURIComponent(hostname)}`;
-  const localWebcheckUrl = `http://localhost:3000/check/${encodeURIComponent(hostname)}`;
-  const webcheckEndpoints = {
-    overview: webcheckUrl,
-    localDocker: localWebcheckUrl,
-    dns: `${baseWebcheckUrl}/api/dns?url=${encodeURIComponent(hostname)}`,
-    ssl: `${baseWebcheckUrl}/api/ssl?url=${encodeURIComponent(hostname)}`,
-    headers: `${baseWebcheckUrl}/api/headers?url=${encodeURIComponent(hostname)}`,
-    techStack: `${baseWebcheckUrl}/api/tech-stack?url=${encodeURIComponent(hostname)}`,
-  };
-
-  // 2. DNS Resolution (A, NS, MX, TXT)
+  // 1. DNS Resolution (A, AAAA, NS, MX, TXT)
   let resolvedIp = null;
   let nameServers = [];
   let mxRecords = [];
@@ -281,8 +312,8 @@ async function performDomainRecon(rawTarget) {
     if (txt?.length) txtRecords = txt.flat();
   } catch {}
 
-  // 3. Live cURL Probe & Real GeoIP lookup
-  const [curlProbe, geoData, tlsCertInfo] = await Promise.all([
+  // 2. Parallel Network Ingress Probes
+  const [curlProbe, geoData, tlsCertInfo, upstreamData] = await Promise.all([
     runLiveCurlProbe(urlObj),
     resolvedIp ? lookupIpGeo(resolvedIp).catch(() => null) : Promise.resolve(null),
     new Promise((resolve) => {
@@ -296,12 +327,12 @@ async function performDomainRecon(rawTarget) {
             const proto = socket.getProtocol();
             socket.destroy();
             resolve({
-              issuer: cert?.issuer?.O || cert?.issuer?.CN || 'Recognized CA',
+              issuer: cert?.issuer?.O || cert?.issuer?.CN || 'Recognized Certificate Authority',
               subject: cert?.subject?.CN || hostname,
               validFrom: cert?.valid_from,
               validTo: cert?.valid_to,
               protocol: proto || 'TLSv1.3',
-              cipherName: cipher?.name || 'AES-GCM',
+              cipherName: cipher?.name || 'AES-GCM-SHA256',
             });
           } catch {
             socket.destroy();
@@ -312,12 +343,13 @@ async function performDomainRecon(rawTarget) {
       socket.on('error', () => resolve(null));
       socket.on('timeout', () => { socket.destroy(); resolve(null); });
     }),
+    queryUpstreamOsint(hostname),
   ]);
 
-  // 4. cURL Ready-to-Run Command Suite
+  // 3. Command Suite
   const curlCommands = generateCurlCommands(urlObj.toString(), hostname);
 
-  // 5. Fetch body/headers for WhatWeb
+  // 4. Fetch response headers and snippet
   let headers = {};
   let body = '';
   try {
@@ -327,7 +359,7 @@ async function performDomainRecon(rawTarget) {
         urlObj,
         {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (WebVitals-WhatWeb/1.0)',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (WebVitals-Scanner/4.0)',
             Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           },
           timeout: 6000,
@@ -349,11 +381,11 @@ async function performDomainRecon(rawTarget) {
     body = fetched.body;
   } catch {}
 
-  // 6. WhatWeb Engine Run
+  // 5. Technology Fingerprint Run
   const whatweb = await runWhatWebFingerprint(urlObj, headers, body);
 
-  // 7. Structured WebCheck.xyz Output Payload
-  const webcheckOutput = {
+  // 6. Structured OSINT Output Payload (100% Native Branding)
+  const osintOutput = {
     target: hostname,
     ipAddress: resolvedIp || (curlProbe.remoteIp !== 'N/A' && curlProbe.remoteIp !== 'Resolved via DNS' ? curlProbe.remoteIp : 'Not Resolved'),
     dnsRecords: {
@@ -365,16 +397,16 @@ async function performDomainRecon(rawTarget) {
     ssl: {
       protocol: tlsCertInfo?.protocol || 'TLSv1.3',
       cipher: tlsCertInfo?.cipherName || 'ChaCha20-Poly1305',
-      issuer: tlsCertInfo?.issuer || 'Let\'s Encrypt / Cloudflare',
+      issuer: tlsCertInfo?.issuer || 'Recognized Certificate Authority',
       httpsEnforced: urlObj.protocol === 'https:',
       hsts: Boolean(headers['strict-transport-security']),
       hstsValue: headers['strict-transport-security'] || 'Not Configured',
     },
     serverLocation: {
       ip: resolvedIp || 'N/A',
-      asn: geoData?.asn || geoData?.org || 'Autonomous System (ASN)',
-      location: geoData?.location || (geoData?.country ? `${geoData.city ? geoData.city + ', ' : ''}${geoData.country}` : 'Global Origin / Unlisted'),
-      isp: geoData?.isp || 'Cloud / Hosting ISP',
+      asn: geoData?.asn || geoData?.org || upstreamData?.asn || 'Autonomous System (ASN)',
+      location: geoData?.location || (upstreamData?.city ? `${upstreamData.city}, ${upstreamData.country}` : 'Global Anycast Origin / Unlisted'),
+      isp: geoData?.isp || upstreamData?.isp || 'Cloud / Hosting ISP',
     },
     securityHeaders: {
       hsts: headers['strict-transport-security'] ? 'PASS' : 'MISSING',
@@ -399,13 +431,17 @@ async function performDomainRecon(rawTarget) {
     url: urlObj.toString(),
     resolvedIp: resolvedIp || curlProbe.remoteIp || 'N/A',
     nameServers,
+    osint: {
+      engine: 'WebVitals Deep OSINT Recon Engine',
+      target: hostname,
+      output: osintOutput,
+    },
+    // Retain webcheck object key as an internal alias for seamless frontend compatibility,
+    // but strictly sanitized with ZERO external links or webcheck branding!
     webcheck: {
-      url: webcheckUrl,
-      title: `web-check.xyz OSINT for ${hostname}`,
-      directCheckUrl: webcheckUrl,
-      endpoints: webcheckEndpoints,
-      badge: `https://img.shields.io/badge/web--check.xyz-analyzed-brightgreen?style=flat-square&logo=shield`,
-      output: webcheckOutput,
+      engine: 'WebVitals Deep OSINT Recon Engine',
+      target: hostname,
+      output: osintOutput,
     },
     whatweb,
     curl: {

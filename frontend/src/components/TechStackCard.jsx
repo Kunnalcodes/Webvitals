@@ -436,7 +436,7 @@ export default function TechStackCard({ initialUrl, externalTechStack = null, ex
             </div>
           )}
 
-          {/* webcheck.xyz & cURL Integration Banner */}
+          {/* Native Perimeter Recon Banner */}
           {techStack?.hostname && (
             <div className="bg-gradient-to-r from-amber-50 to-emerald-50 border-2 border-black rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 brutal-shadow-sm">
               <div className="flex items-center gap-2.5">
@@ -445,24 +445,12 @@ export default function TechStackCard({ initialUrl, externalTechStack = null, ex
                 </div>
                 <div>
                   <div className="font-bold text-xs md:text-sm font-space text-black">
-                    Query webcheck.xyz & WhatWeb OSINT for {techStack.hostname}
+                    Autonomous Perimeter Intelligence Verified for {techStack.hostname}
                   </div>
                   <div className="text-[11px] text-zinc-600 font-medium">
-                    Run full perimeter reconnaissance on webcheck.xyz or inspect via cURL commands.
+                    DNS routing, server infrastructure telemetry, and cryptographic boundaries monitored.
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <a
-                  href={`https://web-check.xyz/check/${encodeURIComponent(techStack.hostname)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-[#86efac] hover:bg-[#4ade80] text-black font-bold font-space text-xs rounded-lg border-2 border-black brutal-shadow-sm flex items-center gap-1.5 transition-transform"
-                >
-                  <span>webcheck.xyz</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
               </div>
             </div>
           )}

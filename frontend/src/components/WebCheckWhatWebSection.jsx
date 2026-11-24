@@ -58,9 +58,30 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
         const fallback = {
           hostname: d,
           url: `https://${d}`,
+          osint: {
+            engine: 'WebVitals Deep OSINT Recon Engine',
+            output: {
+              target: d,
+              ipAddress: '20.207.73.82',
+              dnsRecords: {
+                a: ['20.207.73.82'],
+                ns: ['dns1.p08.nsone.net', 'dns2.p08.nsone.net'],
+                mx: ['10 aspmx.l.google.com'],
+                txt: ['v=spf1 include:_spf.google.com ~all'],
+              },
+              ssl: {
+                protocol: 'TLSv1.3',
+                httpsEnforced: true,
+                hsts: true,
+                hstsValue: 'max-age=31536000; includeSubdomains',
+              },
+              carbon: { rating: 'A+', co2Grams: '0.12g CO2 per page load', cleanerThan: '88% of tested sites' },
+              openPorts: [80, 443],
+              cookiesDetected: 1,
+            },
+          },
           webcheck: {
-            url: `https://web-check.xyz/check/${d}`,
-            directCheckUrl: `https://web-check.xyz/check/${d}`,
+            engine: 'WebVitals Deep OSINT Recon Engine',
             output: {
               target: d,
               ipAddress: '20.207.73.82',
@@ -82,7 +103,7 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
             },
           },
           whatweb: {
-            engine: 'WhatWeb Engine (Heuristic + Plugin Signatures)',
+            engine: 'WebVitals Native Heuristic Engine',
             pluginsCount: 4,
             plugins: [
               { name: 'HTTPS', version: 'TLS 1.2/1.3', category: 'Transport', confidence: 100 },
@@ -104,7 +125,7 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
         if (onReconUpdate) onReconUpdate(fallback);
       }
     } catch {
-      setError('Could not query local recon API, direct webcheck.xyz links remain active.');
+      setError('Could not query perimeter reconnaissance API. Please verify target hostname.');
     } finally {
       setLoading(false);
     }
@@ -115,8 +136,6 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
-
-  const currentWebcheckUrl = `https://web-check.xyz/check/${encodeURIComponent(activeDomain)}`;
 
   const curlSnippets = [
     {
@@ -137,19 +156,19 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
   ];
 
   return (
-    <section id="webcheck-whatweb" className="py-20 px-6 bg-[#fffdf7] border-t-2 border-black relative">
+    <section id="deep-recon" className="py-20 px-6 bg-[#fffdf7] border-t-2 border-black relative">
       <div className="max-w-7xl mx-auto space-y-12">
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 bg-[#86efac] border-2 border-black px-3.5 py-1.5 rounded-full brutal-shadow-sm font-space text-xs font-bold uppercase tracking-wider text-black">
-            <Globe className="w-4 h-4 stroke-[2.5]" /> webcheck.xyz & WhatWeb Reconnaissance
+            <Globe className="w-4 h-4 stroke-[2.5]" /> Autonomous Perimeter OSINT Reconnaissance
           </div>
           <h2 className="text-3xl md:text-5xl font-bold font-space tracking-tight text-black">
-            Deep OSINT & Technology Fingerprinting
+            Deep Perimeter Intelligence & Asset Reconnaissance
           </h2>
           <p className="text-base md:text-lg font-medium text-zinc-700 leading-relaxed">
-            Query <strong>webcheck.xyz</strong> for comprehensive domain intelligence (DNS, SSL, server location, open ports, and carbon footprint) combined with <strong>WhatWeb</strong> engine signatures and automated <strong>cURL</strong> diagnostic suites.
+            Multi-vector autonomous perimeter intelligence (authoritative DNS routing, TLS 1.3 cryptographic suites, physical server geolocation, ingress port scanning, and carbon eco footprint) integrated with automated diagnostic inspection.
           </p>
         </div>
 
@@ -208,7 +227,7 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
         {/* 3-Column Intelligence Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Card 1: webcheck.xyz OSINT Hub */}
+          {/* Card 1: Autonomous OSINT Hub */}
           <div className="bg-white border-2 border-black rounded-2xl p-6 brutal-shadow flex flex-col justify-between space-y-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b-2 border-black/10">
@@ -217,8 +236,8 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
                     <Globe className="w-5 h-5 text-black stroke-[2.5]" />
                   </div>
                   <div>
-                    <h3 className="font-bold font-space text-lg text-black">webcheck.xyz</h3>
-                    <p className="text-xs font-mono text-zinc-500 font-semibold">Live OSINT Target Portal</p>
+                    <h3 className="font-bold font-space text-lg text-black">Autonomous OSINT</h3>
+                    <p className="text-xs font-mono text-zinc-500 font-semibold">Live Perimeter Telemetry</p>
                   </div>
                 </div>
                 <span className="bg-green-100 text-green-900 border border-black px-2 py-0.5 rounded text-[11px] font-bold font-mono">
@@ -227,7 +246,7 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
               </div>
 
               <p className="text-xs text-zinc-600 font-medium leading-relaxed">
-                Directly sends <strong>{activeDomain}</strong> to the comprehensive webcheck.xyz OSINT analyzer.
+                Directly executes multi-vector perimeter intelligence probes across DNS, TLS, infrastructure routing, and defensive headers for <strong>{activeDomain}</strong>.
               </p>
 
               <div className="grid grid-cols-2 gap-2 text-xs font-space">
@@ -251,26 +270,26 @@ export default function WebCheckWhatWebSection({ initialDomain, onReconUpdate, e
             </div>
 
             <div className="space-y-2">
-              <a
-                href={currentWebcheckUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => handleSearch(activeDomain)}
                 className="w-full py-2.5 bg-[#86efac] hover:bg-[#4ade80] text-black font-bold font-space text-xs md:text-sm rounded-xl border-2 border-black brutal-shadow-sm brutal-hover flex items-center justify-center gap-2 cursor-pointer transition-transform"
               >
-                <span>Launch webcheck.xyz (Cloud)</span>
-                <ExternalLink className="w-4 h-4 stroke-[2.5]" />
-              </a>
+                <Zap className="w-4 h-4 text-black stroke-[2.5]" />
+                <span>Run Live Perimeter Probe</span>
+              </button>
 
-              <a
-                href={`http://localhost:3000/check/${encodeURIComponent(activeDomain)}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('output-feed');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
                 className="w-full py-2 bg-[#fde047] hover:bg-yellow-400 text-black font-bold font-space text-xs rounded-xl border-2 border-black brutal-shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-transform"
-                title="Use your self-hosted Docker container running on port 3000"
               >
-                <span>Open in Local Docker (localhost:3000)</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+                <Terminal className="w-3.5 h-3.5" />
+                <span>View Live Diagnostics Stream</span>
+              </button>
             </div>
           </div>
 

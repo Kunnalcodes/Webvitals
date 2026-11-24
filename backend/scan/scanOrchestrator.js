@@ -349,7 +349,7 @@ async function executeScan(scanId, rawUrl) {
           proxyProbes: accessControlData?.telemetry?.proxyHeaders?.probes || [],
         },
         domainRecon: {
-          webcheckUrl: `https://web-check.xyz/check/${encodeURIComponent(hostname)}`,
+          engine: 'WebVitals Deep OSINT Recon Engine',
           whatweb: await runWhatWebFingerprint(urlObj, httpTelemetry.headers, ''),
           curlCommands: generateCurlCommands(rawUrl, hostname),
         },

@@ -144,7 +144,7 @@ async function handleRequest(req, res) {
     return handleTechStack(req, res, parsed);
   }
 
-  // ── Domain Recon (WhatWeb + WebCheck.xyz + cURL Commands) ───────────────────
+  // ── Domain Recon (Autonomous Perimeter OSINT & Network Probes) ─────────────
   if ((pathname === '/api/domain/recon' || pathname === '/api/recon' || pathname === '/api/webcheck' || pathname === '/api/whatweb') && (method === 'GET' || method === 'POST')) {
     if (!checkRateLimit(req, res, 'techstack')) return;
     return handleDomainRecon(req, res, parsed);

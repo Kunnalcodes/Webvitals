@@ -161,7 +161,7 @@ export default function SecurityDetailTabs({ report }) {
             }`}
           >
             <Terminal className="w-4 h-4" />
-            <span>WhatWeb & webcheck.xyz / cURL</span>
+            <span>Deep OSINT Recon & Probes</span>
           </button>
 
           <button
@@ -604,7 +604,7 @@ export default function SecurityDetailTabs({ report }) {
           </div>
         )}
 
-        {/* TAB 6: WHATWEB & WEBCHECK.XYZ / CURL RECON */}
+        {/* TAB 6: AUTONOMOUS OSINT RECON & CURL */}
         {activeTab === 'recon' && (
           <DomainReconPanel
             domainRecon={report.domainRecon}

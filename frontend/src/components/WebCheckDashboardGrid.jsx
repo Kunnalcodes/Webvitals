@@ -160,7 +160,7 @@ export default function WebCheckDashboardGrid({ reconReport, targetHost }) {
     },
     {
       id: 'tech-stack',
-      title: 'WhatWeb Tech Stack',
+      title: 'Perimeter Technology Footprint',
       icon: Cpu,
       badge: 'FINGERPRINT',
       badgeColor: 'bg-indigo-100 text-indigo-900 border-indigo-300',
@@ -168,7 +168,7 @@ export default function WebCheckDashboardGrid({ reconReport, targetHost }) {
         { label: 'Identified Technologies', value: whatweb.plugins?.length ? whatweb.plugins.map(p => p.name).slice(0, 3).join(', ') : 'HTTPS, Strict-Transport-Security' },
         { label: 'Web Server', value: serverSig },
         { label: 'Confidence Score', value: `${whatweb.pluginsCount || 4} verified signatures` },
-        { label: 'Fingerprint Engine', value: whatweb.engine || 'WhatWeb v0.5.5+ Native' },
+        { label: 'Fingerprint Engine', value: whatweb.engine || 'WebVitals Native Engine' },
       ],
     },
     {
@@ -206,7 +206,7 @@ export default function WebCheckDashboardGrid({ reconReport, targetHost }) {
       items: [
         { label: 'Apex Domain Target', value: domain, isMono: true },
         { label: 'Protocol Scheme', value: 'https://' },
-        { label: 'Full OSINT Link', value: `web-check.xyz/check/${domain}` },
+        { label: 'Ingress Gateway', value: `https://${domain}` },
         { label: 'Audit Timestamp', value: new Date().toLocaleTimeString() },
       ],
     },
@@ -223,28 +223,23 @@ export default function WebCheckDashboardGrid({ reconReport, targetHost }) {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base md:text-lg font-bold font-space text-white">
-                Web-Check Complete OSINT Dashboard Suite
+                Autonomous Perimeter OSINT Intelligence Grid
               </h3>
               <span className="bg-purple-900/80 text-purple-200 border border-purple-600 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
                 EVIDENCE GROUNDED
               </span>
             </div>
             <p className="text-xs text-zinc-400 font-mono">
-              Live observable telemetry for <strong className="text-yellow-300">{domain}</strong>
+              Live observable infrastructure telemetry for <strong className="text-yellow-300">{domain}</strong>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <a
-            href={`https://web-check.xyz/check/${encodeURIComponent(domain)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-purple-500 hover:bg-purple-400 text-black font-bold font-space text-xs rounded-xl border border-black flex items-center gap-1.5 transition-transform cursor-pointer"
-          >
-            <span>Open in web-check.xyz</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          <div className="px-3 py-1.5 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Autonomous Recon Active</span>
+          </div>
         </div>
       </div>
 
@@ -291,7 +286,7 @@ export default function WebCheckDashboardGrid({ reconReport, targetHost }) {
 
               {/* Bottom Quick Copy */}
               <div className="pt-2 border-t border-zinc-800/60 flex items-center justify-between text-[11px] text-zinc-500">
-                <span className="font-mono text-[10px]">web-check/{widget.id}</span>
+                <span className="font-mono text-[10px]">osint/{widget.id}</span>
                 <button
                   type="button"
                   onClick={() => handleCopy(widget.items, widget.id)}

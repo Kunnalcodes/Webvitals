@@ -21,9 +21,9 @@ export default function Navbar({ onScrollToScanner, onOpenExtension }) {
         {/* Desktop Links */}
         <div className="hidden lg:flex items-center gap-5 font-semibold text-xs xl:text-sm font-space">
           <a href="#scanner" className="hover:underline decoration-2 underline-offset-4">Master Test</a>
-          <a href="#webcheck-whatweb" className="hover:underline decoration-2 underline-offset-4 flex items-center gap-1">
+          <a href="#deep-recon" className="hover:underline decoration-2 underline-offset-4 flex items-center gap-1">
             <span className="bg-[#86efac] text-black text-[10px] font-bold px-1.5 py-0.2 rounded border border-black">OSINT</span>
-            WebCheck & WhatWeb
+            Perimeter Recon
           </a>
           <a href="#techstack" className="hover:underline decoration-2 underline-offset-4">
             Tech Stack
@@ -40,17 +40,17 @@ export default function Navbar({ onScrollToScanner, onOpenExtension }) {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <div className="hidden xl:flex items-center gap-1.5 bg-[#f0fdf4] text-emerald-800 border-2 border-black rounded-lg px-2.5 py-1.5 text-xs font-bold font-space">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Google Cloud Connected
-          </div>
-          <button
+            {/* <div className="hidden xl:flex items-center gap-1.5 bg-[#f0fdf4] text-emerald-800 border-2 border-black rounded-lg px-2.5 py-1.5 text-xs font-bold font-space">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Google Cloud Connected
+            </div> */}
+          {/* <button
             onClick={onOpenExtension}
             className="bg-[#bfdbfe] text-black px-3 py-2 text-xs font-bold rounded-lg border-2 border-black brutal-shadow-sm brutal-hover font-space cursor-pointer flex items-center gap-1"
             title="Chrome Extension Mini-Version"
           >
             🧩 Chrome Extension
-          </button>
+          </button> */}
           {/* <button
             onClick={onScrollToScanner}
             className="bg-black text-white px-4 py-2 text-xs font-bold rounded-lg border-2 border-black brutal-shadow brutal-hover font-space cursor-pointer flex items-center gap-1.5"

@@ -96,7 +96,7 @@ export default function App() {
         onRescan={handleScanUrl}
       />
 
-      {/* webcheck.xyz & WhatWeb OSINT Reconnaissance Section */}
+      {/* Autonomous Perimeter Intelligence & Asset Reconnaissance Section */}
       <WebCheckWhatWebSection
         initialDomain={scanner.report?.hostname || techStack.report?.hostname || 'github.com'}
         onReconUpdate={setReconReport}
@@ -109,7 +109,7 @@ export default function App() {
         initialUrl={scanner.report?.finalUrl || 'https://wordpress.org'}
       />
 
-      {/* Real-Time Telemetry & Terminal Output Feed Section (with webcheck.xyz output) */}
+      {/* Real-Time Telemetry & Terminal Output Feed Section */}
       <OutputFeedSection
         scannerReport={scanner.report}
         scannerState={scanner}

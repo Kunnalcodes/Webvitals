@@ -27,7 +27,7 @@ import WebCheckDashboardGrid from './WebCheckDashboardGrid';
 
 export default function OutputFeedSection({ scannerReport, scannerState, techStackReport, reconReport }) {
   const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard' | 'terminal' | 'json'
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'security' | 'webcheck' | 'whatweb' | 'curl' | 'cve'
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'security' | 'osint' | 'whatweb' | 'curl' | 'cve'
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -148,39 +148,39 @@ export default function OutputFeedSection({ scannerReport, scannerState, techSta
     }
   }, [scannerReport, isPaused]);
 
-  // Sync recon / webcheck data
+  // Sync recon / OSINT data
   useEffect(() => {
-    if (isPaused || !reconReport?.webcheck?.output) return;
-    const out = reconReport.webcheck.output;
-    const ww = reconReport.whatweb;
-    const curl = reconReport.curl;
+    if (isPaused || (!reconReport?.osint?.output && !reconReport?.webcheck?.output)) return;
+    const out = reconReport?.osint?.output || reconReport?.webcheck?.output;
+    const ww = reconReport?.whatweb;
+    const curl = reconReport?.curl;
 
     const dynamicEvents = [
       {
         id: `rec-dns-${Date.now()}`,
         time: new Date().toLocaleTimeString(),
-        type: 'WEBCHECK',
+        type: 'OSINT_DNS',
         tag: 'DNS_RECORDS',
-        channel: 'webcheck',
-        msg: `[webcheck.xyz:DNS] A-Record: ${out.ipAddress} | NS: ${(out.dnsRecords?.ns || []).slice(0, 2).join(', ')}`,
+        channel: 'osint',
+        msg: `[DNS:RECON] A-Record: ${out.ipAddress} | NS: ${(out.dnsRecords?.ns || []).slice(0, 2).join(', ')}`,
         color: 'text-purple-300',
       },
       {
         id: `rec-ssl-${Date.now()}`,
         time: new Date().toLocaleTimeString(),
-        type: 'WEBCHECK',
+        type: 'OSINT_SSL',
         tag: 'SSL_HEALTH',
-        channel: 'webcheck',
-        msg: `[webcheck.xyz:SSL] ${out.ssl?.protocol || 'TLS 1.3'} | HTTPS Enforced: ${out.ssl?.httpsEnforced ? 'YES' : 'NO'} | HSTS: ${out.ssl?.hstsValue || 'Missing'}`,
+        channel: 'osint',
+        msg: `[SSL:RECON] ${out.ssl?.protocol || 'TLS 1.3'} | HTTPS Enforced: ${out.ssl?.httpsEnforced ? 'YES' : 'NO'} | HSTS: ${out.ssl?.hstsValue || 'Missing'}`,
         color: 'text-purple-300 font-bold',
       },
       {
         id: `rec-whatweb-${Date.now()}`,
         time: new Date().toLocaleTimeString(),
-        type: 'WHATWEB',
+        type: 'FINGERPRINT',
         tag: 'PLUGINS',
         channel: 'whatweb',
-        msg: `[WhatWeb] Fingerprinted ${ww?.pluginsCount || ww?.plugins?.length || 0} plugins: ${(ww?.plugins || []).map((p) => p.name).join(', ')}`,
+        msg: `[Fingerprint] Detected ${ww?.pluginsCount || ww?.plugins?.length || 0} signatures: ${(ww?.plugins || []).map((p) => p.name).join(', ')}`,
         color: 'text-blue-300 font-bold',
       },
       {
@@ -262,10 +262,10 @@ export default function OutputFeedSection({ scannerReport, scannerState, techSta
               <Terminal className="w-3.5 h-3.5 stroke-[2.5]" /> Real-Time Telemetry & SOC Output Feed
             </div>
             <h2 className="text-2xl md:text-4xl font-bold font-space text-white">
-              webcheck.xyz Dashboard & Live Diagnostic Stream
+              Autonomous Perimeter Telemetry & Live SOC Terminal
             </h2>
             <p className="text-xs md:text-sm text-zinc-400 font-mono">
-              Live streaming execution telemetry from <strong>WebVitals Multi-Stage Orchestrator</strong>, <strong>webcheck.xyz</strong> OSINT, <strong>WhatWeb</strong> engine, and <strong>cURL</strong> diagnostic probes for <span className="text-yellow-300 font-bold">{targetHost}</span>.
+              Live streaming execution telemetry from <strong>WebVitals Multi-Stage Orchestrator</strong>, <strong>Autonomous Perimeter OSINT</strong> engine, technology fingerprinters, and <strong>cURL</strong> diagnostic probes for <span className="text-yellow-300 font-bold">{targetHost}</span>.
             </p>
           </div>
 
@@ -350,8 +350,8 @@ export default function OutputFeedSection({ scannerReport, scannerState, techSta
                   { id: 'all', label: 'All Channels' },
                   { id: 'security', label: 'Security Orchestrator' },
                   { id: 'cve', label: 'CVE Intel' },
-                  { id: 'webcheck', label: 'webcheck.xyz' },
-                  { id: 'whatweb', label: 'WhatWeb' },
+                  { id: 'osint', label: 'Perimeter OSINT' },
+                  { id: 'whatweb', label: 'Fingerprint' },
                   { id: 'curl', label: 'cURL Probes' },
                 ].map((f) => (
                   <button
