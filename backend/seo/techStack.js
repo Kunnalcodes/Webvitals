@@ -9,6 +9,7 @@ const http = require('http');
 const https = require('https');
 const { URL } = require('url');
 const { validateTargetUrl } = require('../middleware/abuseProtection');
+const { correlateThreatAdvisories } = require('../services/threatAdvisoryService');
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (WebVitals-TechDetector/1.0)';
@@ -767,6 +768,7 @@ async function detectTechStack(rawUrl) {
     },
     backend,
     frontend,
+    threatAdvisories: correlateThreatAdvisories(allDetected),
     confidence: {
       overall: confidenceLevel,
       signalsCount: totalSignals,

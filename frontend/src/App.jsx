@@ -112,6 +112,7 @@ export default function App() {
       {/* Real-Time Telemetry & Terminal Output Feed Section (with webcheck.xyz output) */}
       <OutputFeedSection
         scannerReport={scanner.report}
+        scannerState={scanner}
         techStackReport={techStack.report}
         reconReport={reconReport || scanner.report?.domainRecon}
       />

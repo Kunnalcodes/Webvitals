@@ -1,5 +1,5 @@
 /**
- * Sensitive File Signatures & Content Matcher — Phase 3
+ * Sensitive File Signatures & Content Matcher — Phase 3 & 4
  * WebVitals
  *
  * Defines probe paths, byte/text signatures, MIME filters, and risk levels
@@ -32,13 +32,29 @@ const SENSITIVE_PROBES = [
     disallowHtml: true,
     signatureCheck: (body) => {
       if (!body) return { matched: false };
-      // Check common .env assignment patterns
       const envPattern = /^(?:[A-Z0-9_-]+=(?:[^\r\n]*))$/m;
       const keyHits = body.match(/(?:DB_PASSWORD|DATABASE_URL|APP_KEY|SECRET|AWS_ACCESS_KEY|API_KEY|REDIS_URL|JWT_SECRET)=/i);
       const isMatch = envPattern.test(body) || keyHits !== null;
       return {
         matched: Boolean(isMatch),
         signature: 'ENV_KEY_ASSIGNMENTS',
+        snippet: redactSecrets(body.slice(0, 300)),
+      };
+    },
+  },
+  {
+    path: '/.env.local',
+    name: 'Local Environment Overrides (.env.local)',
+    risk: 'CRITICAL',
+    disallowHtml: true,
+    signatureCheck: (body) => {
+      if (!body) return { matched: false };
+      const envPattern = /^(?:[A-Z0-9_-]+=(?:[^\r\n]*))$/m;
+      const keyHits = body.match(/(?:DB_PASSWORD|DATABASE_URL|APP_KEY|SECRET|AWS_ACCESS_KEY|API_KEY|REDIS_URL|JWT_SECRET)=/i);
+      const isMatch = envPattern.test(body) || keyHits !== null;
+      return {
+        matched: Boolean(isMatch),
+        signature: 'ENV_LOCAL_ASSIGNMENTS',
         snippet: redactSecrets(body.slice(0, 300)),
       };
     },
@@ -79,6 +95,22 @@ const SENSITIVE_PROBES = [
     },
   },
   {
+    path: '/docker-compose.yml',
+    name: 'Docker Compose Orchestration (docker-compose.yml)',
+    risk: 'HIGH',
+    disallowHtml: true,
+    signatureCheck: (body) => {
+      if (!body) return { matched: false };
+      const hasServices = body.includes('services:') || body.includes('version:');
+      const hasImages = body.includes('image:') || body.includes('build:');
+      return {
+        matched: Boolean(hasServices && hasImages),
+        signature: 'DOCKER_COMPOSE_YML',
+        snippet: redactSecrets(body.slice(0, 300)),
+      };
+    },
+  },
+  {
     path: '/.htaccess',
     name: 'Apache Configuration (.htaccess)',
     risk: 'HIGH',
@@ -115,7 +147,7 @@ const SENSITIVE_PROBES = [
     name: 'Source Archive File (backup.zip)',
     risk: 'CRITICAL',
     disallowHtml: true,
-    signatureCheck: (body, headers) => {
+    signatureCheck: (body, headers = {}) => {
       const cType = (headers['content-type'] || '').toLowerCase();
       const isZip = isZipArchive(body) || cType.includes('application/zip') || cType.includes('application/x-zip-compressed');
       return {
@@ -137,6 +169,21 @@ const SENSITIVE_PROBES = [
         matched: isMatch,
         signature: 'ROBOTS_TXT_DIRECTIVES',
         snippet: body.slice(0, 300),
+      };
+    },
+  },
+  {
+    path: '/swagger.json',
+    name: 'OpenAPI / Swagger Definition (swagger.json)',
+    risk: 'MEDIUM',
+    disallowHtml: true,
+    signatureCheck: (body) => {
+      if (!body) return { matched: false };
+      const isMatch = (body.includes('"swagger":') || body.includes('"openapi":')) && body.includes('"paths":');
+      return {
+        matched: isMatch,
+        signature: 'SWAGGER_SCHEMA_JSON',
+        snippet: body.slice(0, 200),
       };
     },
   },

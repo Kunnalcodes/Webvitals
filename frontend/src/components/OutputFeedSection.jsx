@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Terminal,
   Play,
@@ -18,182 +18,204 @@ import {
   FileJson,
   LayoutGrid,
   Sparkles,
+  Search,
+  Filter,
+  Download,
+  Flame,
 } from 'lucide-react';
 import WebCheckDashboardGrid from './WebCheckDashboardGrid';
 
-export default function OutputFeedSection({ scannerReport, techStackReport, reconReport }) {
+export default function OutputFeedSection({ scannerReport, scannerState, techStackReport, reconReport }) {
   const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard' | 'terminal' | 'json'
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'webcheck' | 'whatweb' | 'curl' | 'security'
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'security' | 'webcheck' | 'whatweb' | 'curl' | 'cve'
+  const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const terminalEndRef = useRef(null);
 
   const targetHost =
-    reconReport?.hostname ||
     scannerReport?.hostname ||
+    reconReport?.hostname ||
     techStackReport?.hostname ||
-    'github.com';
+    'example.com';
 
-  const timestamp = new Date().toLocaleTimeString();
-
-  // Baseline Initial Stream
-  const initialLogs = [
+  // Initial Seed Logs
+  const initialLogs = useMemo(() => [
     {
       id: 1,
-      time: '14:32:01.002',
+      time: new Date().toLocaleTimeString(),
       type: 'INIT',
       tag: 'SCANNER',
       channel: 'security',
-      msg: `Initialized WebVitals Unified Engine for target: https://${targetHost}`,
+      msg: `Unified SOC Telemetry Engine initialized. Target origin: https://${targetHost}`,
       color: 'text-yellow-300 font-bold',
     },
     {
       id: 2,
-      time: '14:32:01.120',
-      type: 'CURL',
-      tag: 'PROBE',
-      channel: 'curl',
-      msg: `curl -ILs "https://${targetHost}" => HTTP 200 OK | DNS: 0.012s | TLS: 0.045s | Total: 0.240s`,
-      color: 'text-green-400 font-bold',
-    },
-    {
-      id: 3,
-      time: '14:32:01.340',
-      type: 'WHATWEB',
-      tag: 'FINGERPRINT',
-      channel: 'whatweb',
-      msg: `whatweb -a 3 "https://${targetHost}" => [HTTPS, HSTS, Cloudflare / Nginx, React, Next.js, Strict-Transport-Security]`,
-      color: 'text-blue-300',
-    },
-    {
-      id: 4,
-      time: '14:32:01.550',
-      type: 'WEBCHECK',
-      tag: 'OSINT_DNS',
-      channel: 'webcheck',
-      msg: `[webcheck.xyz:DNS] A-Record: 20.207.73.82 | NS: dns1.p08.nsone.net, ns-1283.awsdns-32.org`,
-      color: 'text-purple-300',
-    },
-    {
-      id: 5,
-      time: '14:32:01.710',
-      type: 'WEBCHECK',
-      tag: 'OSINT_SSL',
-      channel: 'webcheck',
-      msg: `[webcheck.xyz:SSL] Protocol: TLSv1.3 | HTTPS Enforced: TRUE | HSTS: max-age=31536000`,
-      color: 'text-purple-300 font-bold',
-    },
-    {
-      id: 6,
-      time: '14:32:01.920',
-      type: 'WEBCHECK',
-      tag: 'OSINT_CARBON',
-      channel: 'webcheck',
-      msg: `[webcheck.xyz:CARBON] Footprint Rating: A+ (0.12g CO2 per page load) — Cleaner than 88% of tested websites`,
-      color: 'text-emerald-300',
-    },
-    {
-      id: 7,
-      time: '14:32:02.100',
-      type: 'WEBCHECK',
-      tag: 'OSINT_PORTS',
-      channel: 'webcheck',
-      msg: `[webcheck.xyz:PORTS] Standard Ingress Ports Open: [80/HTTP, 443/HTTPS]`,
+      time: new Date().toLocaleTimeString(),
+      type: 'DNS',
+      tag: 'RECON',
+      channel: 'security',
+      msg: `[DNSSEC] Resolving authoritative NS and CAA security records for ${targetHost}...`,
       color: 'text-cyan-300',
     },
     {
-      id: 8,
-      time: '14:32:02.350',
-      type: 'HEADERS',
-      tag: 'COMPLIANCE',
-      channel: 'security',
-      msg: `Security Headers: Strict-Transport-Security (PASS), Content-Security-Policy (PASS), X-Frame-Options (DENY), nosniff (PASS)`,
-      color: 'text-emerald-400',
+      id: 3,
+      time: new Date().toLocaleTimeString(),
+      type: 'PROBE',
+      tag: 'CURL',
+      channel: 'curl',
+      msg: `curl -ILs "https://${targetHost}" => Handshake initiated (HTTP/2 & TLS 1.3 negotiated)`,
+      color: 'text-green-400 font-bold',
     },
-  ];
+  ], [targetHost]);
 
   const [logs, setLogs] = useState(initialLogs);
 
-  // Dynamic Event Injection when reconReport / webcheck.xyz output updates
+  // Sync logs when scannerState emits stage logs
   useEffect(() => {
-    if (reconReport && reconReport.webcheck?.output) {
-      const out = reconReport.webcheck.output;
-      const ww = reconReport.whatweb;
-      const curl = reconReport.curl;
+    if (isPaused) return;
+    if (scannerState?.stageLogs && scannerState.stageLogs.length > 0) {
+      const stageEvents = scannerState.stageLogs.map((log, idx) => ({
+        id: `stage-${log.stage}-${idx}-${Date.now()}`,
+        time: log.timestamp || new Date().toLocaleTimeString(),
+        type: log.stage,
+        tag: log.status?.toUpperCase() || 'STAGE',
+        channel: 'security',
+        msg: `[ScanEngine:${log.stage}] ${log.message}`,
+        color: log.status === 'done' ? 'text-emerald-400 font-bold' : log.status === 'running' ? 'text-yellow-300 animate-pulse' : 'text-blue-300',
+      }));
 
-      const dynamicEvents = [
-        {
-          id: Date.now() + 1,
-          time: new Date().toLocaleTimeString(),
-          type: 'WEBCHECK',
-          tag: 'TARGET_SYNC',
-          channel: 'webcheck',
-          msg: `================ webcheck.xyz OSINT STREAM: ${reconReport.hostname} ================`,
-          color: 'text-yellow-400 font-bold',
-        },
-        {
-          id: Date.now() + 2,
-          time: new Date().toLocaleTimeString(),
-          type: 'WEBCHECK',
-          tag: 'DNS_RECORDS',
-          channel: 'webcheck',
-          msg: `[webcheck.xyz:DNS] Target IP: ${out.ipAddress} | NS: ${out.dnsRecords.ns.slice(0, 3).join(', ')}`,
-          color: 'text-purple-300',
-        },
-        {
-          id: Date.now() + 3,
-          time: new Date().toLocaleTimeString(),
-          type: 'WEBCHECK',
-          tag: 'SSL_HEALTH',
-          channel: 'webcheck',
-          msg: `[webcheck.xyz:SSL] ${out.ssl.protocol} | HTTPS Enforced: ${out.ssl.httpsEnforced} | HSTS: ${out.ssl.hstsValue}`,
-          color: 'text-purple-300 font-bold',
-        },
-        {
-          id: Date.now() + 4,
-          time: new Date().toLocaleTimeString(),
-          type: 'WEBCHECK',
-          tag: 'CARBON_ECO',
-          channel: 'webcheck',
-          msg: `[webcheck.xyz:CARBON] Grade: ${out.carbon.rating} (${out.carbon.co2Grams}) — ${out.carbon.cleanerThan}`,
-          color: 'text-emerald-300',
-        },
-        {
-          id: Date.now() + 5,
-          time: new Date().toLocaleTimeString(),
-          type: 'WEBCHECK',
-          tag: 'OPEN_PORTS',
-          channel: 'webcheck',
-          msg: `[webcheck.xyz:PORTS] Detected Public Ports: [${out.openPorts.join(', ')}] • Cookies: ${out.cookiesDetected}`,
-          color: 'text-cyan-300',
-        },
-        {
-          id: Date.now() + 6,
-          time: new Date().toLocaleTimeString(),
-          type: 'WHATWEB',
-          tag: 'PLUGINS',
-          channel: 'whatweb',
-          msg: `[WhatWeb] Fingerprinted ${ww.pluginsCount || ww.plugins?.length || 0} plugins: ${ww.plugins?.map((p) => p.name).join(', ')}`,
-          color: 'text-blue-300 font-bold',
-        },
-        {
-          id: Date.now() + 7,
-          time: new Date().toLocaleTimeString(),
-          type: 'CURL',
-          tag: 'PROBE_METRICS',
-          channel: 'curl',
-          msg: `[cURL] Latency: DNS ${curl?.liveProbe?.dnsTime || '0.012s'} | TLS ${curl?.liveProbe?.tlsTime || '0.045s'} | Total ${curl?.liveProbe?.totalTime || '0.240s'}`,
-          color: 'text-green-400',
-        },
-      ];
-
-      setLogs((prev) => [...prev, ...dynamicEvents]);
+      setLogs((prev) => {
+        const existingMsgs = new Set(prev.map(p => p.msg));
+        const newItems = stageEvents.filter(e => !existingMsgs.has(e.msg));
+        return newItems.length > 0 ? [...prev, ...newItems] : prev;
+      });
     }
-  }, [reconReport]);
+  }, [scannerState?.stageLogs, isPaused]);
 
-  const filteredLogs =
-    activeFilter === 'all'
-      ? logs
-      : logs.filter((log) => log.channel === activeFilter);
+  // Sync real telemetry events when scannerReport arrives
+  useEffect(() => {
+    if (isPaused || !scannerReport) return;
+
+    const telemetryLogs = [];
+    const t = scannerReport.telemetry || {};
+
+    if (t.http) {
+      telemetryLogs.push({
+        id: `http-${Date.now()}`,
+        time: new Date().toLocaleTimeString(),
+        type: 'HTTP',
+        tag: 'TELEMETRY',
+        channel: 'security',
+        msg: `HTTP Response: Status ${t.http.status || 200} | Content-Type: ${t.http.contentType || 'text/html'} | Latency: ${t.http.elapsedMs || 120}ms`,
+        color: 'text-emerald-300 font-bold',
+      });
+    }
+
+    if (t.tls) {
+      telemetryLogs.push({
+        id: `tls-${Date.now()}`,
+        time: new Date().toLocaleTimeString(),
+        type: 'TLS',
+        tag: 'CRYPTO',
+        channel: 'security',
+        msg: `TLS Handshake: ${t.tls.protocol || 'TLS 1.3'} | Cipher: ${t.tls.cipher || 'AES-GCM-SHA256'} | Issuer: ${t.tls.issuer || 'Valid CA'}`,
+        color: 'text-purple-300',
+      });
+    }
+
+    if (scannerReport.threatAdvisories && scannerReport.threatAdvisories.length > 0) {
+      scannerReport.threatAdvisories.slice(0, 3).forEach((cve, idx) => {
+        telemetryLogs.push({
+          id: `cve-${idx}-${Date.now()}`,
+          time: new Date().toLocaleTimeString(),
+          type: 'CVE_INTEL',
+          tag: cve.severity,
+          channel: 'cve',
+          msg: `[Vulnerability Advisory] ${cve.id} (${cve.severity} - CVSS ${cve.cvss}): ${cve.title}`,
+          color: cve.severity === 'CRITICAL' ? 'text-red-400 font-extrabold' : 'text-amber-400 font-bold',
+        });
+      });
+    }
+
+    if (telemetryLogs.length > 0) {
+      setLogs((prev) => {
+        const existingMsgs = new Set(prev.map(p => p.msg));
+        const newItems = telemetryLogs.filter(e => !existingMsgs.has(e.msg));
+        return newItems.length > 0 ? [...prev, ...newItems] : prev;
+      });
+    }
+  }, [scannerReport, isPaused]);
+
+  // Sync recon / webcheck data
+  useEffect(() => {
+    if (isPaused || !reconReport?.webcheck?.output) return;
+    const out = reconReport.webcheck.output;
+    const ww = reconReport.whatweb;
+    const curl = reconReport.curl;
+
+    const dynamicEvents = [
+      {
+        id: `rec-dns-${Date.now()}`,
+        time: new Date().toLocaleTimeString(),
+        type: 'WEBCHECK',
+        tag: 'DNS_RECORDS',
+        channel: 'webcheck',
+        msg: `[webcheck.xyz:DNS] A-Record: ${out.ipAddress} | NS: ${(out.dnsRecords?.ns || []).slice(0, 2).join(', ')}`,
+        color: 'text-purple-300',
+      },
+      {
+        id: `rec-ssl-${Date.now()}`,
+        time: new Date().toLocaleTimeString(),
+        type: 'WEBCHECK',
+        tag: 'SSL_HEALTH',
+        channel: 'webcheck',
+        msg: `[webcheck.xyz:SSL] ${out.ssl?.protocol || 'TLS 1.3'} | HTTPS Enforced: ${out.ssl?.httpsEnforced ? 'YES' : 'NO'} | HSTS: ${out.ssl?.hstsValue || 'Missing'}`,
+        color: 'text-purple-300 font-bold',
+      },
+      {
+        id: `rec-whatweb-${Date.now()}`,
+        time: new Date().toLocaleTimeString(),
+        type: 'WHATWEB',
+        tag: 'PLUGINS',
+        channel: 'whatweb',
+        msg: `[WhatWeb] Fingerprinted ${ww?.pluginsCount || ww?.plugins?.length || 0} plugins: ${(ww?.plugins || []).map((p) => p.name).join(', ')}`,
+        color: 'text-blue-300 font-bold',
+      },
+      {
+        id: `rec-curl-${Date.now()}`,
+        time: new Date().toLocaleTimeString(),
+        type: 'CURL',
+        tag: 'LATENCY',
+        channel: 'curl',
+        msg: `[cURL] Latency: DNS ${curl?.liveProbe?.dnsTime || '0.012s'} | TLS ${curl?.liveProbe?.tlsTime || '0.045s'} | Total ${curl?.liveProbe?.totalTime || '0.240s'}`,
+        color: 'text-green-400',
+      },
+    ];
+
+    setLogs((prev) => {
+      const existingMsgs = new Set(prev.map(p => p.msg));
+      const newItems = dynamicEvents.filter(e => !existingMsgs.has(e.msg));
+      return newItems.length > 0 ? [...prev, ...newItems] : prev;
+    });
+  }, [reconReport, isPaused]);
+
+  // Auto-scroll to bottom of terminal if not paused
+  useEffect(() => {
+    if (!isPaused && viewMode === 'terminal' && terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, isPaused, viewMode]);
+
+  // Filter logs
+  const filteredLogs = useMemo(() => {
+    return logs.filter((l) => {
+      const matchesFilter = activeFilter === 'all' || l.channel === activeFilter;
+      const matchesSearch = !searchQuery.trim() || l.msg.toLowerCase().includes(searchQuery.toLowerCase()) || l.type.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [logs, activeFilter, searchQuery]);
 
   const handleCopyLogs = () => {
     const text = filteredLogs.map((l) => `[${l.time}] [${l.type}] ${l.msg}`).join('\n');
@@ -202,29 +224,31 @@ export default function OutputFeedSection({ scannerReport, techStackReport, reco
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDownloadLogs = () => {
+    const text = filteredLogs.map((l) => `[${l.time}] [${l.type}] ${l.msg}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `webvitals-telemetry-${targetHost}.log`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleClearLogs = () => {
     setLogs([]);
   };
 
-  const rawJsonOutput = reconReport || {
+  const rawJsonOutput = {
     target: targetHost,
-    webcheck: {
-      url: `https://web-check.xyz/check/${targetHost}`,
-      status: 'SYNCHRONIZED',
-      ip: '20.207.73.82',
-      dns: ['dns1.p08.nsone.net', 'dns2.p08.nsone.net'],
-      ssl: { protocol: 'TLSv1.3', valid: true },
-      carbon: { rating: 'A+', score: '0.12g CO2' },
-      openPorts: [80, 443],
-    },
-    whatweb: {
-      engine: 'WhatWeb Engine v0.5.5+',
-      plugins: ['HTTPS', 'HSTS', 'Cloudflare', 'React', 'Next.js'],
-    },
-    curl: {
-      httpCode: 200,
-      totalTime: '0.240s',
-    },
+    scanScore: scannerReport?.score,
+    scanGrade: scannerReport?.grade,
+    findingsCount: scannerReport?.findings?.length || 0,
+    threatAdvisories: scannerReport?.threatAdvisories || [],
+    telemetry: scannerReport?.telemetry || {},
+    webcheck: reconReport?.webcheck || {},
+    whatweb: reconReport?.whatweb || {},
+    technologies: techStackReport?.technologies || scannerReport?.technologies || [],
   };
 
   return (
@@ -235,13 +259,13 @@ export default function OutputFeedSection({ scannerReport, techStackReport, reco
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 bg-yellow-400 text-black px-3 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider">
-              <Terminal className="w-3.5 h-3.5 stroke-[2.5]" /> Real-Time Telemetry & Output Feed
+              <Terminal className="w-3.5 h-3.5 stroke-[2.5]" /> Real-Time Telemetry & SOC Output Feed
             </div>
             <h2 className="text-2xl md:text-4xl font-bold font-space text-white">
-              webcheck.xyz Dashboard & Live Output Feed
+              webcheck.xyz Dashboard & Live Diagnostic Stream
             </h2>
             <p className="text-xs md:text-sm text-zinc-400 font-mono">
-              Live streaming execution output and 12-tile visual dashboard from <strong>webcheck.xyz</strong> OSINT, <strong>WhatWeb</strong> engine, and <strong>cURL</strong> diagnostic probes.
+              Live streaming execution telemetry from <strong>WebVitals Multi-Stage Orchestrator</strong>, <strong>webcheck.xyz</strong> OSINT, <strong>WhatWeb</strong> engine, and <strong>cURL</strong> diagnostic probes for <span className="text-yellow-300 font-bold">{targetHost}</span>.
             </p>
           </div>
 
@@ -250,157 +274,194 @@ export default function OutputFeedSection({ scannerReport, techStackReport, reco
             <button
               type="button"
               onClick={() => setViewMode('dashboard')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-space font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-lg font-space font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                 viewMode === 'dashboard'
-                  ? 'bg-purple-500 text-black shadow-md'
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
+                  ? 'bg-yellow-400 text-black shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
-              <span>All 12 Web-Check Modules</span>
+              <span>12-Tile OSINT Dashboard</span>
             </button>
 
             <button
               type="button"
               onClick={() => setViewMode('terminal')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-space font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-lg font-space font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                 viewMode === 'terminal'
-                  ? 'bg-yellow-400 text-black shadow-md'
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
+                  ? 'bg-yellow-400 text-black shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <Terminal className="w-4 h-4" />
-              <span>Live Terminal Feed</span>
+              <span>Live SOC Terminal ({filteredLogs.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setViewMode('json')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-space font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-lg font-space font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                 viewMode === 'json'
-                  ? 'bg-emerald-400 text-black shadow-md'
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
+                  ? 'bg-yellow-400 text-black shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <FileJson className="w-4 h-4" />
-              <span>Raw JSON Stream</span>
+              <span>Raw JSON Telemetry</span>
             </button>
           </div>
         </div>
 
-        {/* VIEW 1: FULL 12-MODULE WEB-CHECK DASHBOARD GRID */}
+        {/* VIEW 1: 12-TILE VISUAL DASHBOARD */}
         {viewMode === 'dashboard' && (
-          <WebCheckDashboardGrid
-            reconReport={reconReport}
-            targetHost={targetHost}
-          />
+          <div className="space-y-6">
+            <WebCheckDashboardGrid
+              reconReport={reconReport || scannerReport?.domainRecon}
+              targetHost={targetHost}
+            />
+          </div>
         )}
 
-        {/* VIEW 2: LIVE CYBER TERMINAL FEED */}
+        {/* VIEW 2: LIVE SOC TERMINAL STREAM */}
         {viewMode === 'terminal' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Filter Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-900/90 border border-zinc-800 rounded-xl p-3">
-              <div className="flex flex-wrap gap-1.5">
+          <div className="bg-[#09090b] border-2 border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
+            
+            {/* Terminal Top Control Bar */}
+            <div className="bg-zinc-900/90 border-b border-zinc-800 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              
+              {/* Traffic Lights & Status */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                  <span className="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
+                  <span className="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
+                </div>
+                <span className="text-xs font-mono text-zinc-400 pl-2 border-l border-zinc-700">
+                  target://{targetHost}
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
+                  <Radio className="w-3 h-3 animate-pulse" /> LIVE STREAM
+                </span>
+              </div>
+
+              {/* Channel Filters */}
+              <div className="flex flex-wrap items-center gap-1.5">
                 {[
-                  { id: 'all', label: 'All Events' },
-                  { id: 'webcheck', label: 'webcheck.xyz Stream', badge: 'OSINT' },
-                  { id: 'whatweb', label: 'WhatWeb Engine' },
+                  { id: 'all', label: 'All Channels' },
+                  { id: 'security', label: 'Security Orchestrator' },
+                  { id: 'cve', label: 'CVE Intel' },
+                  { id: 'webcheck', label: 'webcheck.xyz' },
+                  { id: 'whatweb', label: 'WhatWeb' },
                   { id: 'curl', label: 'cURL Probes' },
-                  { id: 'security', label: 'Security Audits' },
-                ].map((tab) => (
+                ].map((f) => (
                   <button
-                    key={tab.id}
+                    key={f.id}
                     type="button"
-                    onClick={() => setActiveFilter(tab.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
-                      activeFilter === tab.id
-                        ? 'bg-yellow-400 text-black border-yellow-400'
-                        : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
+                    onClick={() => setActiveFilter(f.id)}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                      activeFilter === f.id
+                        ? 'bg-yellow-400 text-black'
+                        : 'bg-zinc-800 text-zinc-400 hover:text-white'
                     }`}
                   >
-                    <span>{tab.label}</span>
-                    {tab.badge && (
-                      <span className="bg-black text-yellow-300 px-1 py-0.2 rounded text-[10px]">
-                        {tab.badge}
-                      </span>
-                    )}
+                    {f.label}
                   </button>
                 ))}
               </div>
 
+              {/* Search & Actions */}
               <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="Search logs..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-black/60 border border-zinc-700 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-yellow-400 w-36 sm:w-44"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPaused(!isPaused)}
+                  title={isPaused ? 'Resume stream' : 'Pause stream'}
+                  className={`p-1.5 rounded-lg border font-mono text-xs cursor-pointer ${
+                    isPaused ? 'bg-yellow-400/20 text-yellow-300 border-yellow-400' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
+                  }`}
+                >
+                  {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                </button>
+
                 <button
                   type="button"
                   onClick={handleCopyLogs}
-                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="Copy filtered logs"
+                  className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg cursor-pointer"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-yellow-400" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadLogs}
+                  title="Download .log file"
+                  className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+
                 <button
                   type="button"
                   onClick={handleClearLogs}
-                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="Clear terminal"
+                  className="p-1.5 bg-zinc-800 hover:bg-red-900/60 text-zinc-400 hover:text-red-300 border border-zinc-700 rounded-lg cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                  <span>Clear</span>
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* Terminal Box */}
-            <div className="bg-black border-2 border-zinc-800 rounded-2xl overflow-hidden brutal-shadow font-mono text-xs shadow-2xl">
-              <div className="bg-zinc-900 border-b border-zinc-800 px-4 py-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                  <span className="text-zinc-400 text-[11px] ml-2 font-bold">
-                    webvitals-output-stream — {targetHost} [webcheck.xyz + WhatWeb]
-                  </span>
-                </div>
-                <div className="text-[11px] text-zinc-500">
-                  <span>Encoding: UTF-8</span>
-                </div>
-              </div>
-
-              <div className="p-4 md:p-6 space-y-2 max-h-[460px] overflow-y-auto select-text scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900">
-                {filteredLogs.length === 0 ? (
-                  <div className="text-zinc-600 text-center py-8">
-                    Console output cleared for filter "{activeFilter}". Search or scan a domain to stream new output.
+            {/* Terminal Feed Body */}
+            <div className="p-6 font-mono text-xs space-y-2 h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 bg-black/90">
+              {filteredLogs.length > 0 ? (
+                filteredLogs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 hover:bg-zinc-900/40 p-1 rounded transition-colors">
+                    <span className="text-zinc-600 shrink-0 select-none">[{log.time}]</span>
+                    <span className="text-yellow-500 font-bold shrink-0 select-none">[{log.type}]</span>
+                    <span className={`break-all ${log.color || 'text-zinc-300'}`}>{log.msg}</span>
                   </div>
-                ) : (
-                  filteredLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 py-1 border-b border-zinc-900/80 hover:bg-zinc-900/40 px-1 rounded transition-colors"
-                    >
-                      <span className="text-zinc-500 text-[11px] whitespace-nowrap">
-                        [{log.time}]
-                      </span>
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] uppercase font-bold tracking-wider self-start ${
-                        log.channel === 'webcheck' ? 'bg-purple-900/80 text-purple-200 border border-purple-700' : 'bg-zinc-800 text-zinc-300'
-                      }`}>
-                        {log.type}
-                      </span>
-                      <p className={`flex-1 ${log.color || 'text-zinc-300'} break-all leading-relaxed`}>
-                        {log.msg}
-                      </p>
-                    </div>
-                  ))
-                )}
-                <div ref={terminalEndRef} />
+                ))
+              ) : (
+                <div className="text-zinc-500 italic py-12 text-center">
+                  No log entries matched the current query or filter.
+                </div>
+              )}
+              <div ref={terminalEndRef} />
+            </div>
+
+            {/* Terminal Footer Telemetry Status */}
+            <div className="bg-zinc-950 border-t border-zinc-800/80 px-4 py-2 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+              <div className="flex items-center gap-4">
+                <span>BUFFER: {logs.length} events</span>
+                <span>FILTERED: {filteredLogs.length} events</span>
+                <span>ENCODING: UTF-8</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>STATE: {isPaused ? 'PAUSED' : 'STREAMING'}</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* VIEW 3: RAW JSON PAYLOAD */}
+        {/* VIEW 3: RAW JSON TELEMETRY */}
         {viewMode === 'json' && (
-          <div className="bg-black border-2 border-zinc-800 rounded-2xl p-6 font-mono text-xs overflow-x-auto shadow-2xl space-y-4 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <span className="text-zinc-400 font-bold">Raw webcheck.xyz & Recon JSON Object</span>
+          <div className="bg-[#09090b] border-2 border-zinc-800 rounded-2xl p-6 relative">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-zinc-800">
+              <span className="font-mono text-xs text-zinc-400">
+                APPLICATION/JSON • CANONICAL AUDIT STATE
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -408,13 +469,13 @@ export default function OutputFeedSection({ scannerReport, techStackReport, reco
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black font-mono font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-emerald-400" />}
-                <span>{copied ? 'Copied JSON' : 'Copy JSON'}</span>
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied JSON!' : 'Copy JSON'}</span>
               </button>
             </div>
-            <pre className="text-emerald-400 leading-relaxed whitespace-pre-wrap">
+            <pre className="font-mono text-xs text-emerald-400 overflow-x-auto max-h-[500px] scrollbar-thin">
               {JSON.stringify(rawJsonOutput, null, 2)}
             </pre>
           </div>

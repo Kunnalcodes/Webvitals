@@ -1,5 +1,5 @@
 /**
- * HTTP Security Headers Analyzer — Phase 3
+ * HTTP Security Headers Analyzer — Phase 3 & 4
  * WebVitals
  *
  * Decomposes and analyzes security headers with normalized evidence:
@@ -8,6 +8,7 @@
  *   - Clickjacking: dual-correlation of X-Frame-Options and CSP frame-ancestors
  *   - MIME Sniffing: X-Content-Type-Options: nosniff
  *   - Referrer-Policy & Permissions-Policy
+ *   - Cross-Origin Isolation: COOP, COEP, CORP
  *   - Server info disclosure: Server, X-Powered-By
  */
 
@@ -364,7 +365,52 @@ function analyzeSecurityHeaders(rawHeaders = {}, isHttps = true) {
     }));
   }
 
-  // ── 7. Server Information Disclosure ─────────────────────────────────────
+  // ── 7. Cross-Origin Opener Policy (COOP) ──────────────────────────────────
+  const coop = (headers['cross-origin-opener-policy'] || '').toLowerCase();
+  if (coop.includes('same-origin')) {
+    findings.push(createFinding({
+      id: 'COOP_CONFIGURED',
+      channel: 'ISOLATION',
+      title: 'Cross-Origin-Opener-Policy (COOP) Enforced',
+      status: DETERMINATION.PASS,
+      severity: SEVERITY.INFO,
+      confidence: 1.0,
+      scoreImpact: 5,
+      description: `COOP is set to "${coop}", isolating the browsing context from cross-origin popups and protecting against XS-Leaks/Spectre attacks.`,
+      evidence: [createEvidence({ source: EVIDENCE_SOURCE.HTTP, quality: EVIDENCE_QUALITY.DIRECT, observedValue: coop })],
+    }));
+  } else {
+    findings.push(createFinding({
+      id: 'COOP_MISSING',
+      channel: 'ISOLATION',
+      title: 'Cross-Origin-Opener-Policy (COOP) Missing',
+      status: DETERMINATION.WARNING,
+      severity: SEVERITY.LOW,
+      confidence: 1.0,
+      scoreImpact: 0,
+      description: 'Cross-Origin-Opener-Policy header is not configured. Cross-origin documents opened in the same browsing context group can retain window references.',
+      evidence: [createEvidence({ source: EVIDENCE_SOURCE.HTTP, quality: EVIDENCE_QUALITY.DIRECT, observedValue: null })],
+      recommendation: 'Add "Cross-Origin-Opener-Policy: same-origin" to isolate your application process and mitigate side-channel leakage.',
+    }));
+  }
+
+  // ── 8. Cross-Origin Embedder Policy (COEP) ────────────────────────────────
+  const coep = (headers['cross-origin-embedder-policy'] || '').toLowerCase();
+  if (coep.includes('require-corp') || coep.includes('credentialless')) {
+    findings.push(createFinding({
+      id: 'COEP_CONFIGURED',
+      channel: 'ISOLATION',
+      title: 'Cross-Origin-Embedder-Policy (COEP) Enforced',
+      status: DETERMINATION.PASS,
+      severity: SEVERITY.INFO,
+      confidence: 1.0,
+      scoreImpact: 5,
+      description: `COEP is set to "${coep}", preventing the document from loading cross-origin resources without explicit permission.`,
+      evidence: [createEvidence({ source: EVIDENCE_SOURCE.HTTP, quality: EVIDENCE_QUALITY.DIRECT, observedValue: coep })],
+    }));
+  }
+
+  // ── 9. Server Information Disclosure ─────────────────────────────────────
   const server = headers['server'];
   const poweredBy = headers['x-powered-by'];
   if (server || poweredBy) {

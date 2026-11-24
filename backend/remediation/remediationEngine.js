@@ -13,6 +13,7 @@ const { generateApacheRemediation } = require('./generators/apacheGenerator');
 const { generateNodeRemediation } = require('./generators/nodeGenerator');
 const { generateNextRemediation } = require('./generators/nextGenerator');
 const { generateCaddyRemediation, generateCloudflareRemediation, generateDnsRemediation } = require('./generators/dnsGenerator');
+const { generateVercelRemediation, generateNetlifyRemediation } = require('./generators/cloudGenerator');
 
 /**
  * Resolves the most appropriate remediation for a finding and detected technology stack.
@@ -46,9 +47,12 @@ function resolveRemediation(scanReport, findingId, preferredStack = null) {
       const name = (tech.name || '').toLowerCase();
       const conf = tech.confidence ?? 1.0;
       if (conf >= 0.85) {
+        if (name.includes('vercel')) { targetStack = 'vercel'; break; }
+        if (name.includes('netlify')) { targetStack = 'netlify'; break; }
         if (name.includes('next')) { targetStack = 'next'; break; }
         if (name.includes('nginx')) { targetStack = 'nginx'; break; }
         if (name.includes('apache')) { targetStack = 'apache'; break; }
+        if (name.includes('caddy')) { targetStack = 'caddy'; break; }
         if (name.includes('cloudflare')) { targetStack = 'cloudflare'; break; }
         if (name.includes('express') || name.includes('node')) { targetStack = 'node'; break; }
       }
@@ -57,7 +61,11 @@ function resolveRemediation(scanReport, findingId, preferredStack = null) {
 
   // 3. Generate remediation according to stack
   let result = null;
-  if (targetStack === 'nginx') {
+  if (targetStack === 'vercel') {
+    result = generateVercelRemediation(findingId);
+  } else if (targetStack === 'netlify') {
+    result = generateNetlifyRemediation(findingId);
+  } else if (targetStack === 'nginx') {
     result = generateNginxRemediation(findingId);
   } else if (targetStack === 'apache') {
     result = generateApacheRemediation(findingId);

@@ -15,9 +15,11 @@ import {
   Lock,
   ExternalLink,
   Terminal,
+  Sliders,
 } from 'lucide-react';
 import PdfReportModal from './PdfReportModal';
 import DomainReconPanel from './DomainReconPanel';
+import WhatIfSimulator from './WhatIfSimulator';
 
 export default function SecurityDetailTabs({ report }) {
   const [activeTab, setActiveTab] = useState('cookies');
@@ -160,6 +162,19 @@ export default function SecurityDetailTabs({ report }) {
           >
             <Terminal className="w-4 h-4" />
             <span>WhatWeb & webcheck.xyz / cURL</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('simulator')}
+            className={`px-4 py-2.5 rounded-xl border-2 border-black font-bold text-xs md:text-sm font-space flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'simulator'
+                ? 'bg-[#c084fc] brutal-shadow text-black'
+                : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border-purple-300'
+            }`}
+          >
+            <Sliders className="w-4 h-4 text-purple-900" />
+            <span>"What-If" Fix Simulator 🚀</span>
           </button>
         </div>
 
@@ -596,6 +611,11 @@ export default function SecurityDetailTabs({ report }) {
             targetUrl={report.targetUrl || report.requestedUrl}
             hostname={report.hostname}
           />
+        )}
+
+        {/* TAB 7: "WHAT-IF" REMEDIATION SIMULATOR */}
+        {activeTab === 'simulator' && (
+          <WhatIfSimulator baselineReport={report} />
         )}
       </div>
 

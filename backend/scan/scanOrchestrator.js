@@ -33,6 +33,7 @@ const { analyzePhishingAndThreatIntel } = require('../analyzers/phishingAnalyzer
 const { analyzeHttpVerbs }             = require('../analyzers/httpVerbAnalyzer');
 const { analyzeProxyHeaders }          = require('../analyzers/proxyHeaderAnalyzer');
 const { detectTechnologies }           = require('../signatures/technologySignatures');
+const { correlateThreatAdvisories }     = require('../services/threatAdvisoryService');
 const { generateCurlCommands, runWhatWebFingerprint } = require('../services/domainReconService');
 const { queryIpGeolocation }           = require('../services/threatIntelService');
 const { SAFE_BROWSING_API_KEY, VIRUSTOTAL_API_KEY } = require('../config/env');
@@ -353,6 +354,7 @@ async function executeScan(scanId, rawUrl) {
           curlCommands: generateCurlCommands(rawUrl, hostname),
         },
         technologies: techStack,
+        threatAdvisories: correlateThreatAdvisories(techStack),
         telemetry: {
           http: {
             status: httpTelemetry.status,

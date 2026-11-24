@@ -18,6 +18,8 @@ import {
   Boxes,
   Radio,
   Terminal,
+  ShieldAlert,
+  AlertTriangle,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
@@ -41,7 +43,7 @@ export default function TechStackCard({ initialUrl, externalTechStack = null, ex
       try {
         res = await fetch(`${API_BASE}/api/techstack?url=${encodeURIComponent(cleanUrl)}`);
       } catch {
-        res = await fetch(`http://localhost:3000/api/techstack?url=${encodeURIComponent(cleanUrl)}`);
+        res = await fetch(`/api/techstack?url=${encodeURIComponent(cleanUrl)}`);
       }
 
       if (!res.ok && res.status !== 200) {
@@ -53,10 +55,10 @@ export default function TechStackCard({ initialUrl, externalTechStack = null, ex
       if (data.error && data.message) {
         setError(data.message);
       } else {
-        setLocalTechStack(data);
+        setLocalTechStack(data.data || data);
       }
     } catch (err) {
-      setError(err.message || 'Could not connect to Tech Stack detector backend. Ensure the backend server is running on port 3000.');
+      setError(err.message || 'Could not connect to Tech Stack detector backend. Ensure the backend server is running.');
     } finally {
       setLoading(false);
     }
@@ -345,6 +347,94 @@ export default function TechStackCard({ initialUrl, externalTechStack = null, ex
             </div>
 
           </div>
+
+          {/* Correlated CVE & Threat Advisories Intelligence */}
+          {techStack?.threatAdvisories && techStack.threatAdvisories.length > 0 && (
+            <div className="bg-[#fffdf7] border-2 border-black rounded-2xl p-6 brutal-shadow space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b-2 border-black/10">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-red-100 border border-black flex items-center justify-center">
+                    <ShieldAlert className="w-4 h-4 text-red-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-base font-space text-zinc-900">
+                      Correlated CVE Threat Advisories & Vulnerability Intelligence
+                    </h4>
+                    <p className="text-xs text-zinc-600 font-medium">
+                      Matched against NIST NVD, CISA Known Exploited Vulnerabilities (KEV), and vendor security bulletins.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 bg-red-100 text-red-800 border border-black rounded-md font-space">
+                  {techStack.threatAdvisories.length} Known CVEs
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {techStack.threatAdvisories.map((cve, idx) => {
+                  const isCrit = cve.severity === 'CRITICAL' || (cve.cvss && cve.cvss >= 9.0);
+                  const isHigh = cve.severity === 'HIGH' || (cve.cvss && cve.cvss >= 7.0);
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-white border-2 border-black rounded-xl p-4 brutal-shadow-sm flex flex-col justify-between space-y-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold font-mono px-2 py-0.5 bg-zinc-100 border border-zinc-300 rounded text-zinc-800">
+                              {cve.id}
+                            </span>
+                            <span className="text-xs font-bold font-space text-zinc-600">
+                              {cve.techName}
+                            </span>
+                          </div>
+                          <h5 className="font-bold text-sm font-space text-zinc-900 mt-1 leading-snug">
+                            {cve.title}
+                          </h5>
+                        </div>
+                        <span
+                          className={`text-xs font-extrabold font-space px-2 py-0.5 rounded border uppercase shrink-0 ${
+                            isCrit
+                              ? 'bg-red-500 text-white border-black'
+                              : isHigh
+                              ? 'bg-amber-400 text-black border-black'
+                              : 'bg-yellow-200 text-black border-black'
+                          }`}
+                        >
+                          {cve.severity} {cve.cvss ? `(${cve.cvss})` : ''}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-zinc-600 leading-relaxed font-sans">
+                        {cve.description}
+                      </p>
+
+                      <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-[11px] font-space text-zinc-700">
+                        <strong className="text-emerald-700 font-bold block mb-0.5">Mitigation:</strong>
+                        <span>{cve.mitigation}</span>
+                      </div>
+
+                      {cve.reference && (
+                        <div className="pt-1 flex items-center justify-between text-[11px] font-space text-zinc-500">
+                          <span>Vector: {cve.vector || 'Remote'}</span>
+                          <a
+                            href={cve.reference}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 font-bold text-blue-600 hover:underline"
+                          >
+                            <span>NVD Advisory</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* webcheck.xyz & cURL Integration Banner */}
           {techStack?.hostname && (
