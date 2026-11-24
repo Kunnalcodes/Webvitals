@@ -14,6 +14,7 @@ import {
   CheckSquare,
   RefreshCw,
   ExternalLink,
+  BrainCircuit,
 } from 'lucide-react';
 import SeoScoreCard from './SeoScoreCard';
 import SeoCategoryCards from './SeoCategoryCards';
@@ -22,6 +23,7 @@ import SeoPreviews from './SeoPreviews';
 import SeoLighthouseTab from './SeoLighthouseTab';
 import SeoMediaLinksTab from './SeoMediaLinksTab';
 import SeoAiOptimizerTab from './SeoAiOptimizerTab';
+import SeoIntelligenceDashboard from './SeoIntelligenceDashboard';
 
 const SAMPLE_SEO_PREVIEWS = [
   {
@@ -63,7 +65,7 @@ const SAMPLE_SEO_PREVIEWS = [
 export default function SeoAuditSection({ seoState, onScan }) {
   const [activePreviewSample, setActivePreviewSample] = useState(SAMPLE_SEO_PREVIEWS[0]);
   const [inputUrl, setInputUrl] = useState('');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('intelligence');
 
   const report = seoState?.report;
   const status = seoState?.status;
@@ -138,6 +140,7 @@ export default function SeoAuditSection({ seoState, onScan }) {
 
             <div className="flex flex-wrap items-center gap-2 border-b-2 border-black pb-3">
               {[
+                { id: 'intelligence', label: 'Intelligence (SEO • GEO • AEO)' },
                 { id: 'overview', label: 'Overview & Categories' },
                 { id: 'ai-optimizer', label: 'AI Meta & Keywords' },
                 { id: 'issues', label: 'All Checks & Fixes' },
@@ -160,6 +163,7 @@ export default function SeoAuditSection({ seoState, onScan }) {
             </div>
 
             <div>
+              {activeTab === 'intelligence' && <SeoIntelligenceDashboard report={report} />}
               {activeTab === 'overview' && (
                 <div>
                   <SeoCategoryCards categories={report.categories} />

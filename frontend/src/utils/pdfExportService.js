@@ -686,6 +686,83 @@ export function buildSecurityPdfDoc(report, techStack = null, seo = null) {
   }
 
   // =========================================================================
+  // SECTION 9B: GENERATIVE (GEO) & ANSWER ENGINE (AEO) INTELLIGENCE
+  // =========================================================================
+  if (seo && (seo.intelligence || seo.geo || seo.aeo)) {
+    const intel = seo.intelligence || {};
+    const ov = intel.overview || seo.intelligenceOverview || {};
+    const geo = intel.geoModule || seo.geo || {};
+    const aeo = intel.aeoModule || seo.aeo || {};
+    const roadmap = intel.roadmap || seo.roadmap || [];
+
+    drawSectionHeader('9B', 'Generative (GEO) & Answer Engine (AEO) Optimization Diagnostics');
+
+    const geoAeoRows = [
+      ['GEO Machine Readability & AI Crawler Readiness', `${ov.geoScore ?? geo.score ?? 65}/100`, (ov.geoScore ?? geo.score ?? 65) >= 70 ? 'PASS' : 'WARN', 'Semantic DOM clarity, boilerplate ratio, AI crawler policy directives.'],
+      ['AEO Answer Engine & Question Coverage', `${ov.aeoScore ?? aeo.score ?? 60}/100`, (ov.aeoScore ?? aeo.score ?? 60) >= 70 ? 'PASS' : 'WARN', 'Direct answers, inverted pyramid formatting, user journey intent coverage.'],
+      ['Entity & Brand Authority Profile', `${geo.entityUnderstanding?.clarityRating || 'Moderate'} (${geo.entityUnderstanding?.clarityScore || 60}/100)`, 'EVAL', `Brand: ${geo.entityUnderstanding?.brandIdentity?.name || 'Detected'}, Category: ${geo.entityUnderstanding?.primaryCategory || 'General Asset'}`],
+      ['Search Intent Classification', `${intel.seoModule?.searchIntent?.primaryIntent || 'Informational'}`, 'EVAL', `Primary search query intent alignment (${Math.round((intel.seoModule?.searchIntent?.confidence || 0.8) * 100)}% confidence).`],
+      ['Discoverability Posture Level', `${ov.discoverabilityAssessment?.label || 'Discoverable'}`, (ov.discoverabilityAssessment?.level === 'HIGH') ? 'PASS' : 'WARN', ov.discoverabilityAssessment?.summary || 'Audited based on verified crawl and HTML structure.']
+    ];
+
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [['Intelligence Dimension / Vector', 'Observed Value', 'Status', 'Diagnostic Impact & Context']],
+      body: geoAeoRows,
+      theme: 'grid',
+      headStyles: { fillColor: primaryDark, textColor: [255, 255, 255], fontSize: 7, cellPadding: 3 },
+      bodyStyles: { fontSize: 6.5, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 155, fontStyle: 'bold' },
+        1: { cellWidth: 70, halign: 'center', fontStyle: 'bold' },
+        2: { cellWidth: 40, halign: 'center', fontStyle: 'bold' },
+        3: { cellWidth: 'auto' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 2) {
+          if (data.cell.raw === 'PASS') {
+            data.cell.styles.textColor = passGreen;
+          } else if (data.cell.raw === 'WARN') {
+            data.cell.styles.textColor = warnAmber;
+          } else {
+            data.cell.styles.textColor = [59, 130, 246];
+          }
+        }
+      },
+    });
+
+    currentY = doc.lastAutoTable.finalY + 14;
+
+    if (roadmap.length > 0) {
+      ensureSpace(45, 'Prioritized Optimization Roadmap');
+      const topActions = roadmap.slice(0, 4).map(r => [
+        `[${r.priority || 'P1'}] ${r.problem}`,
+        r.recommendedAction,
+        r.effort || 'Low',
+        r.expectedOutcome || 'Score improvement'
+      ]);
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['Priority & Core Deficiency', 'Recommended Engineering Action', 'Effort', 'Expected Outcome']],
+        body: topActions,
+        theme: 'grid',
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontSize: 7, cellPadding: 3 },
+        bodyStyles: { fontSize: 6, cellPadding: 2.5 },
+        columnStyles: {
+          0: { cellWidth: 140, fontStyle: 'bold' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 45, halign: 'center' },
+          3: { cellWidth: 95 }
+        }
+      });
+      currentY = doc.lastAutoTable.finalY + 16;
+    }
+  }
+
+  // =========================================================================
   // SECTION 10: AUDIT SCOPE, METHODOLOGY & DISCLAIMER
   // =========================================================================
   drawSectionHeader('10', 'Audit Methodology, Boundaries & Verification Directives');

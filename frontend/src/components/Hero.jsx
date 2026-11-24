@@ -27,6 +27,7 @@ import {
   Square,
   LayoutDashboard,
   ExternalLink,
+  BrainCircuit,
 } from 'lucide-react';
 import SecurityDetailTabs from './SecurityDetailTabs';
 import PdfReportModal from './PdfReportModal';
@@ -39,6 +40,7 @@ import SeoPreviews from './seo/SeoPreviews';
 import SeoLighthouseTab from './seo/SeoLighthouseTab';
 import SeoMediaLinksTab from './seo/SeoMediaLinksTab';
 import SeoAiOptimizerTab from './seo/SeoAiOptimizerTab';
+import SeoIntelligenceDashboard from './seo/SeoIntelligenceDashboard';
 import { ExecutiveSummary } from './ai/ExecutiveSummary';
 import { AIExplanationPanel } from './ai/AIExplanationPanel';
 import { RemediationPlaybook } from './ai/RemediationPlaybook';
@@ -71,7 +73,7 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
   const [downloadingDirectJson, setDownloadingDirectJson] = useState(false);
   const [downloadDirectJsonSuccess, setDownloadDirectJsonSuccess] = useState(false);
   const [activeEngineTab, setActiveEngineTab] = useState('osint'); // 'osint' | 'security' | 'techstack' | 'seo' | 'evidence'
-  const [activeSeoTab, setActiveSeoTab] = useState('overview');
+  const [activeSeoTab, setActiveSeoTab] = useState('intelligence');
 
   const { status: secStatus, report: secReport, error: secError, isRateLimited, retryCountdown } = scannerState;
   const techReport = techStackState?.report;
@@ -1031,6 +1033,7 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
 
                 <div className="flex flex-wrap items-center gap-2 border-b-2 border-black pb-3">
                   {[
+                    { id: 'intelligence', label: 'Intelligence (SEO • GEO • AEO)', icon: BrainCircuit },
                     { id: 'overview', label: 'Overview & Categories', icon: LayoutDashboard },
                     { id: 'ai-optimizer', label: 'AI Meta & Keywords', icon: Sparkles },
                     { id: 'issues', label: 'All Checks & Fixes', icon: CheckCircle2 },
@@ -1058,6 +1061,10 @@ export default function Hero({ scannerState, techStackState, seoState, onScan, o
                 </div>
 
                 <div>
+                  {activeSeoTab === 'intelligence' && (
+                    <SeoIntelligenceDashboard report={activeSeoReport} />
+                  )}
+
                   {activeSeoTab === 'overview' && (
                     <div>
                       <SeoCategoryCards categories={activeSeoReport.categories} />

@@ -169,7 +169,36 @@ async function performSeoAudit(targetUrl, options = {}) {
     },
   };
 
-  // 7. Vertex / Gemini AI Rich Metadata & Keyword Recommendations
+  // 7. Multi-Vector SEO, GEO & AEO Deep Intelligence Engine
+  try {
+    const { buildSeoIntelligenceReport } = require('./intelligence');
+    const intelligence = await buildSeoIntelligenceReport({
+      targetUrl,
+      crawlResult,
+      parsedData,
+      robotsTxt,
+      sitemapXml,
+      brokenLinks,
+      lighthouse,
+    });
+    report.intelligence = intelligence;
+    if (intelligence) {
+      report.geo = intelligence.geo;
+      report.aeo = intelligence.aeo;
+      report.strategyMatrix = intelligence.strategyMatrix;
+      report.roadmap = intelligence.roadmap;
+      report.aiIntelligence = intelligence.aiIntelligence;
+      report.intelligenceOverview = intelligence.overview;
+      // Sync enhanced recommendations & scores if available
+      if (intelligence.overview?.seoScore !== undefined) {
+        report.enhancedSeoScore = intelligence.overview.seoScore;
+      }
+    }
+  } catch (intelErr) {
+    console.warn('[SEOAudit] Intelligence engine error:', intelErr.message);
+  }
+
+  // 8. Vertex / Gemini AI Rich Metadata & Keyword Recommendations
   try {
     const { generateAiSeoRecommendations } = require('./seoAiGenerator');
     const aiOptimization = await generateAiSeoRecommendations({
